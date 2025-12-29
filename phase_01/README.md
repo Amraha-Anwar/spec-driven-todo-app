@@ -112,19 +112,19 @@ python src/main.py
 
 ### Folder Structure   
 
-phase_01/
-├── src/
-│   └── main.py
-├── ui/
-│   ├── console.py
-│   └── menu.py
-├── models/
-│   └── task.py
-├── services/
-│   └── task_manager.py
-├── README.md
-├── CLAUDE.md
-└── .gitignore
+phase_01/   
+├── src/   
+│   └── main.py   
+├── ui/   
+│   ├── console.py    
+│   └── menu.py   
+├── models/   
+│   └── task.py   
+├── services/   
+│   └── task_manager.py   
+├── README.md   
+├── CLAUDE.md   
+└── .gitignore   
 
 
 
