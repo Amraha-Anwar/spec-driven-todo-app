@@ -15,7 +15,7 @@ This is the **Phase 01 (Basic Level)** of a multi-phase project designed for rap
 - [Installation](#installation)  
 - [Usage](#usage)  
 - [Folder Structure](#folder-structure)  
-- [Technologies](#technologies)  
+- [Tech Stack](#tech-stack)  
 - [Contributing](#contributing)  
 - [License](#license)  
 
@@ -94,25 +94,18 @@ Run the console application:
 python src/main.py
 ```
 
-### Commands   
+### Commands
 
-╒═══════════╤═══════════════════════════════╕
-│ Command   │ Function                      │
-╞═══════════╪═══════════════════════════════╡
-│ add       │ Add a new task                │
-├───────────┼───────────────────────────────┤
-│ list      │ List all tasks                │
-├───────────┼───────────────────────────────┤
-│ update    │ Update a task                 │
-├───────────┼───────────────────────────────┤
-│ complete  │ Mark task complete/incomplete │
-├───────────┼───────────────────────────────┤
-│ delete    │ Delete a task                 │
-├───────────┼───────────────────────────────┤
-│ help      │ Show command table            │
-├───────────┼───────────────────────────────┤
-│ exit      │ Exit the application          │
-╘═══════════╧═══════════════════════════════╛
+| Command   | Function                           |
+|-----------|------------------------------------|
+| `add`     | Add a new task                     |
+| `list`    | List all tasks                     |
+| `update`  | Update a task                      |
+| `complete`| Mark task complete/incomplete      |
+| `delete`  | Delete a task                      |
+| `help`    | Show command table                 |
+| `exit`    | Exit the application               |
+
 
 ***Tip: Enter help anytime to display all available commands.***   
 
@@ -120,18 +113,19 @@ python src/main.py
 ### Folder Structure   
 
 phase_01/
-├─ src/
-│   ├─ main.py
-│   └─ ...
-├─ ui/
-│   └─ console.py, menu.py
-├─ models/
-│   └─ task.py
-├─ services/
-│   └─ task_manager.py
-├─ README.md
-├─ CLAUDE.md
-└─ .gitignore
+├── src/
+│   └── main.py
+├── ui/
+│   ├── console.py
+│   └── menu.py
+├── models/
+│   └── task.py
+├── services/
+│   └── task_manager.py
+├── README.md
+├── CLAUDE.md
+└── .gitignore
+
 
 
 ### Tech Stack   
