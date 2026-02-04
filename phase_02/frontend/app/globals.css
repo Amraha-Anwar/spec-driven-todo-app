@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 15% 5%;
+    --foreground: 0 0% 98%;
+  }
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    @apply bg-[#0a0a0f] text-white;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .glassmorphic {
+    background: rgba(20, 20, 30, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .glow-effect {
+    box-shadow: 0 0 30px rgba(225, 29, 72, 0.3);
+  }
+  
+  .glow-text {
+    text-shadow: 0 0 20px rgba(225, 29, 72, 0.5);
+  }
+}
+
+/* Radial gradient backgrounds */
+.radial-gradient-1 {
+  background: radial-gradient(circle at 20% 50%, rgba(225, 29, 72, 0.15) 0%, transparent 50%);
+}
+
+.radial-gradient-2 {
+  background: radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+}
