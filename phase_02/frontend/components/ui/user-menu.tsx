@@ -1,7 +1,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
-import { logout } from "@/lib/auth-actions";
-import { useAuth } from "@/hooks/use-auth";
+import { logout } from "../../lib/auth-actions";
+import { useAuth } from "../../app/hooks/use-auth";
 
 export const UserMenu = () => {
   const { data } = useAuth();

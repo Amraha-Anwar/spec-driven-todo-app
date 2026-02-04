@@ -208,3 +208,10 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+## Active Technologies
+- TypeScript 5.3+ / Next.js 16+ + sonner ^2.0.7 (already installed, no new deps) (009-fix-toast-exports)
+- N/A (no data changes) (009-fix-toast-exports)
+
+## Recent Changes
+- 009-fix-toast-exports: Added TypeScript 5.3+ / Next.js 16+ + sonner ^2.0.7 (already installed, no new deps)
