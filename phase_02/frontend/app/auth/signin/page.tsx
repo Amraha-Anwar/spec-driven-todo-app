@@ -30,7 +30,7 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      const { error: authError } = await authClient.signIn.email({
+      const { data, error: authError } = await authClient.signIn.email({
         email,
         password,
         callbackURL: '/dashboard',
@@ -40,8 +40,11 @@ export default function SignInPage() {
         toast.error(authError.message || 'Invalid email or password');
       } else {
         toast.success('Welcome back!');
-        router.push('/dashboard');
-        router.refresh();
+        
+        // ✅ REDIRECTION FIX: 
+        // Using window.location.href instead of router.push ensures that 
+        // the browser session and cookies are fully synchronized before landing on the dashboard.
+        window.location.href = '/dashboard';
       }
     } catch (err) {
       toast.error('An unexpected error occurred');

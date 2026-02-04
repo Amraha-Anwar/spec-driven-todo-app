@@ -1,62 +1,68 @@
-from fastapi import Depends, HTTPException, status
-from sqlmodel import Session
-from typing import Optional  
-from src.database.database import get_session
-from src.core.security import verify_session_token, verify_session_token_optional
-from src.models.user import User
+import os
+from fastapi import HTTPException, Security, status, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlmodel import Session, select
+from src.models.auth import Session as SessionModel
+from src.database.database import get_session as get_db_session
+from datetime import datetime, timezone
+from typing import Optional # Lazmi import karein taake Optional verification chale
+
+security = HTTPBearer()
 
 def get_current_user(
-    session_data: dict = Depends(verify_session_token),
-    session: Session = Depends(get_session)
-) -> User:
+    credentials: HTTPAuthorizationCredentials = Security(security),
+) -> dict:
     """
-    Validates session token and fetches user from DB.
+    Verifies the session token and returns user info. 
+    In Phase II, this ensures user isolation for tasks.
     """
-    user_data = session_data.get("user")
-    if not user_data:
-        print("❌ No user in session data")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No user in session",
-        )
-
-    user_id = user_data.get("id")
-    if not user_id:
-        print("❌ No user ID in session")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user data",
-        )
-
-    user = session.get(User, user_id)
-    if not user:
-        print(f"❌ User not found for ID: {user_id}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
-
-    print(f"✅ Authenticated user: {user.email}")
-    return user
-
+    token = credentials.credentials
+    
+    # Database session management
+    db = next(get_db_session())
+    
+    try:
+        # Search for the session record in the database
+        statement = select(SessionModel).where(SessionModel.token == token)
+        session_record = db.exec(statement).first()
+        
+        if not session_record:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired session token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Timezone-aware expiration check
+        current_time = datetime.now(timezone.utc)
+        expires_at = session_record.expiresAt
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at < current_time:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session has expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        return {
+            "id": session_record.userId,
+            "session_id": session_record.id
+        }
+        
+    finally:
+        db.close()
 
 def get_current_user_optional(
-    session_data: Optional[dict] = Depends(verify_session_token_optional),
-    session: Session = Depends(get_session)
-) -> Optional[User]:
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(HTTPBearer(auto_error=False))
+) -> Optional[dict]:
     """
-    Optional authentication - returns None if not authenticated.
+    Optional authentication for public routes or dynamic UI.
     """
-    if not session_data:
+    if not credentials:
         return None
-
-    user_data = session_data.get("user")
-    if not user_data:
+    try:
+        return get_current_user(credentials)
+    except HTTPException:
         return None
-
-    user_id = user_data.get("id")
-    if not user_id:
-        return None
-
-    user = session.get(User, user_id)
-    return user
