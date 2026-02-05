@@ -214,7 +214,10 @@ export default function Home() {
             transition={{ duration: 0.5, delay: 0.5 }}
             className="max-w-3xl mx-auto"
           >
-            <div className="glassmorphic rounded-2xl border border-pink-red/20 p-12 text-center">
+            <motion.div
+              whileHover={{ scale: 1.02, transition: { duration: 0.3 } }}
+              className="glassmorphic-3d rounded-2xl border border-pink-red/20 p-12 text-center"
+            >
               <h2 className="text-3xl md:text-4xl font-bold mb-6 glow-text">
                 Why Plannoir?
               </h2>
@@ -228,7 +231,7 @@ export default function Home() {
                 Plannoir exists because we think the tools you use daily deserve the same
                 care as the projects you ship.
               </p>
-            </div>
+            </motion.div>
           </motion.div>
         </div>
 
@@ -248,7 +251,10 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {/* Free Tier */}
-              <div className="glassmorphic rounded-2xl border border-white/10 p-8 flex flex-col">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -5, transition: { duration: 0.3 } }}
+                className="glassmorphic-3d rounded-2xl border border-white/10 p-8 flex flex-col"
+              >
                 <h3 className="text-2xl font-bold mb-2">Free</h3>
                 <p className="text-gray-400 mb-6">Everything you need to get organized</p>
                 <div className="text-4xl font-bold mb-8">
@@ -274,10 +280,13 @@ export default function Home() {
                 >
                   Get Started Free
                 </Link>
-              </div>
+              </motion.div>
 
               {/* Pro Tier */}
-              <div className="glassmorphic rounded-2xl border border-pink-red/40 p-8 flex flex-col relative glow-effect">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -5, transition: { duration: 0.3 } }}
+                className="glassmorphic-3d rounded-2xl border border-pink-red/40 p-8 flex flex-col relative glow-effect"
+              >
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="bg-gradient-to-r from-pink-red to-pink-red/80 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                     Popular
@@ -308,7 +317,7 @@ export default function Home() {
                 >
                   Upgrade to Pro
                 </Link>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
         </div>
@@ -321,7 +330,10 @@ export default function Home() {
             transition={{ duration: 0.5, delay: 0.6 }}
             className="text-center"
           >
-            <div className="glassmorphic rounded-2xl border border-pink-red/20 p-12 glow-effect">
+            <motion.div
+              whileHover={{ scale: 1.02, transition: { duration: 0.3 } }}
+              className="glassmorphic-3d rounded-2xl border border-pink-red/20 p-12 glow-effect"
+            >
               <h2 className="text-4xl font-bold mb-4 glow-text">
                 Ready to elevate your productivity?
               </h2>
@@ -335,7 +347,7 @@ export default function Home() {
                 {dashboardOrSignupLabel}
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-            </div>
+            </motion.div>
           </motion.div>
         </div>
       </main>
@@ -361,12 +373,22 @@ export default function Home() {
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <motion.div
-      whileHover={{ scale: 1.05, y: -5 }}
-      className="glassmorphic p-6 rounded-xl border border-pink-red/20 transition-all hover:border-pink-red/40 hover:glow-effect"
+      whileHover={{
+        scale: 1.05,
+        y: -8,
+        transition: { duration: 0.3 }
+      }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glassmorphic-3d p-6 rounded-xl border border-pink-red/20 transition-all hover:border-pink-red/40 perspective-container group"
     >
-      <div className="w-12 h-12 rounded-lg bg-pink-red/20 border border-pink-red/30 flex items-center justify-center mb-4 text-pink-red">
+      <motion.div
+        animate={{ y: [0, -5, 0] }}
+        transition={{ duration: 3, repeat: Infinity }}
+        className="w-12 h-12 rounded-lg bg-pink-red/20 border border-pink-red/30 flex items-center justify-center mb-4 text-pink-red glow-strong group-hover:glow-strong"
+      >
         {icon}
-      </div>
+      </motion.div>
       <h3 className="text-xl font-semibold text-white mb-2">{title}</h3>
       <p className="text-gray-400">{description}</p>
     </motion.div>

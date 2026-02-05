@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { MoreVertical, Pencil, Trash2, Check, Clock, Calendar, Flag } from "lucide-react";
 import { format, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "../../lib/toast";
@@ -86,11 +87,18 @@ export function TaskCard({ task, userId, onEdit, onUpdate }: TaskCardProps) {
   const dueDateInfo = getDueDateInfo();
 
   return (
-    <div
-      className={`glassmorphic rounded-xl border p-5 transition-all hover:border-pink-red/30 ${
-        task.is_completed ? "opacity-60" : ""
-      } ${dueDateInfo?.isOverdue ? "border-red-500/30 glow-effect" : "border-white/10"}`}
+    <motion.div
+      whileHover={{
+        scale: 1.02,
+        transition: { duration: 0.3 }
+      }}
+      className="perspective-container"
     >
+      <div
+        className={`glassmorphic-3d rounded-xl border p-5 transition-all ${
+          task.is_completed ? "opacity-60" : ""
+        } ${dueDateInfo?.isOverdue ? "border-red-500/30 glow-effect" : "border-white/10"}`}
+      >
       <div className="flex items-start gap-4">
         {/* Checkbox */}
         <button
@@ -122,14 +130,16 @@ export function TaskCard({ task, userId, onEdit, onUpdate }: TaskCardProps) {
           <div className="flex flex-wrap items-center gap-3 text-xs">
             {/* Priority */}
             {task.priority && (
-              <div
+              <motion.div
+                animate={task.priority === 'high' ? { scale: [1, 1.05, 1] } : {}}
+                transition={task.priority === 'high' ? { duration: 2, repeat: Infinity } : {}}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md border ${
                   priorityColors[task.priority as keyof typeof priorityColors]
-                }`}
+                } ${task.priority === 'high' ? 'glow-pulse-animation' : ''}`}
               >
                 <Flag className="w-3 h-3" />
                 {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-              </div>
+              </motion.div>
             )}
 
             {/* Due Date */}
@@ -187,6 +197,7 @@ export function TaskCard({ task, userId, onEdit, onUpdate }: TaskCardProps) {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
