@@ -75,14 +75,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Mobile Sidebar Toggle Button (visible only on ≤768px) */}
-      <motion.button
-        whileTap={{ scale: 0.95 }}
-        onClick={toggleSidebar}
-        className="md:hidden fixed top-4 left-4 z-50 p-3 glassmorphic-3d rounded-lg border border-white/10 text-white"
-        aria-label="Toggle sidebar"
-      >
-        {sidebarCollapsed ? <Menu className="h-6 w-6" /> : <X className="h-6 w-6" />}
-      </motion.button>
+      <div className="md:hidden fixed top-4 left-4 z-50">
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={toggleSidebar}
+          className="p-3 glassmorphic-3d rounded-lg border border-white/10 text-white"
+          aria-label="Toggle sidebar"
+        >
+          {sidebarCollapsed ? <Menu className="h-6 w-6" /> : <X className="h-6 w-6" />}
+        </motion.button>
+      </div>
 
       {/* Sidebar (responsive) */}
       <AnimatePresence>

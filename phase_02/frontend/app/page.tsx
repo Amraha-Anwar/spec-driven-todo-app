@@ -230,24 +230,6 @@ function HeroSection({ dashboardOrSignup, dashboardOrSignupLabel, prefersReduced
           </motion.p>
         </motion.div>
       </div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.5 }}
-        className="container mx-auto px-4 py-12 border-t border-white/5"
-      >
-        <p className="text-center text-xs tracking-[0.3em] uppercase text-gray-500 mb-8">
-          Trusted by productive teams
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
-          {['Vercel', 'Linear', 'Raycast', 'Resend', 'Neon'].map((name) => (
-            <span key={name} className="text-gray-600 text-lg font-semibold tracking-wide">
-              {name}
-            </span>
-          ))}
-        </div>
-      </motion.div>
     </div>
   );
 }
