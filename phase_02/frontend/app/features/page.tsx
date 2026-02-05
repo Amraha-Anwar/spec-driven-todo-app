@@ -1,10 +1,22 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import { Sparkles, Zap, Shield, Palette } from 'lucide-react';
 import Link from 'next/link';
+import { useRef } from 'react';
 
 export default function FeaturesPage() {
+  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const headerRef = useRef(null);
+  const featuresRef = useRef(null);
+  const premiumRef = useRef(null);
+  const ctaRef = useRef(null);
+
+  const headerInView = useInView(headerRef, { once: true, amount: 0.2 });
+  const featuresInView = useInView(featuresRef, { once: true, amount: 0.2 });
+  const premiumInView = useInView(premiumRef, { once: true, amount: 0.2 });
+  const ctaInView = useInView(ctaRef, { once: true, amount: 0.2 });
+
   const features = [
     {
       icon: <Sparkles className="h-8 w-8 text-pink-red" />,
@@ -92,9 +104,10 @@ export default function FeaturesPage() {
         <div className="container mx-auto px-4">
           {/* Header Section */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            ref={headerRef}
+            initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
+            animate={headerInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.6, ease: 'easeInOut' }}
             className="text-center mb-16"
           >
             <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-white to-pink-red bg-clip-text text-transparent">
@@ -106,13 +119,17 @@ export default function FeaturesPage() {
           </motion.div>
 
           {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
+          <div ref={featuresRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-16">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
+                initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
+                animate={featuresInView ? { opacity: 1, y: 0 } : {}}
+                transition={{
+                  duration: prefersReducedMotion ? 0 : 0.6,
+                  delay: prefersReducedMotion ? 0 : index * 0.1,
+                  ease: 'easeInOut'
+                }}
                 whileHover={{ y: -5 }}
                 className="glassmorphic p-8 rounded-xl border border-pink-red/20"
               >
@@ -125,27 +142,39 @@ export default function FeaturesPage() {
 
           {/* Premium Features Section */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+            ref={premiumRef}
+            initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95 }}
+            animate={premiumInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.6, ease: 'easeInOut' }}
             className="glassmorphic p-8 rounded-xl border border-pink-red/20 mb-16"
           >
             <h2 className="text-3xl font-bold mb-6 text-center text-pink-red">Premium Features</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {premiumFeatures.map((feature, index) => (
-                <div key={index} className="bg-deep-black/50 p-6 rounded-lg">
+                <motion.div
+                  key={index}
+                  initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
+                  animate={premiumInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{
+                    duration: prefersReducedMotion ? 0 : 0.5,
+                    delay: prefersReducedMotion ? 0 : index * 0.1,
+                    ease: 'easeInOut'
+                  }}
+                  className="bg-deep-black/50 p-6 rounded-lg"
+                >
                   <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                   <p className="text-gray-300">{feature.description}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </motion.div>
 
           {/* CTA Section */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            ref={ctaRef}
+            initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.9 }}
+            animate={ctaInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.6, ease: 'easeInOut' }}
             className="text-center"
           >
             <Link

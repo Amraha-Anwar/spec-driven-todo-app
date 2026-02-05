@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, Upload } from "lucide-react";
 
 interface AvatarProps {
@@ -13,6 +13,13 @@ interface AvatarProps {
 
 export function Avatar({ name, imageUrl, size = "md", editable = false, onImageChange }: AvatarProps) {
   const [preview, setPreview] = useState<string | null>(imageUrl || null);
+
+  // Update preview when imageUrl prop changes (for global avatar updates)
+  useEffect(() => {
+    if (imageUrl !== undefined) {
+      setPreview(imageUrl);
+    }
+  }, [imageUrl]);
 
   const sizeClasses = {
     sm: "w-8 h-8 text-sm",

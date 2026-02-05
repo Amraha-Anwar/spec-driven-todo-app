@@ -6,6 +6,7 @@ import { MoreVertical, Pencil, Trash2, Check, Clock, Calendar, Flag } from "luci
 import { format, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "../../lib/toast";
 import { api } from "../../lib/api";
+import { TaskDeleteModal } from "./task-delete-modal";
 
 interface Task {
   id: string;
@@ -22,10 +23,12 @@ interface TaskCardProps {
   userId: string;
   onEdit: () => void;
   onUpdate: () => void;
+  onDelete?: (taskId: string) => Promise<void>;
 }
 
-export function TaskCard({ task, userId, onEdit, onUpdate }: TaskCardProps) {
+export function TaskCard({ task, userId, onEdit, onUpdate, onDelete }: TaskCardProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const priorityColors = {
@@ -46,14 +49,24 @@ export function TaskCard({ task, userId, onEdit, onUpdate }: TaskCardProps) {
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+    setShowMenu(false);
+  };
 
+  const handleDeleteConfirm = async () => {
     setIsDeleting(true);
     try {
-      await api.delete(`/api/${userId}/tasks/${task.id}`);
-      toast.success("Task deleted successfully");
-      onUpdate();
+      // If parent provides onDelete (for optimistic UI), use it
+      if (onDelete) {
+        await onDelete(task.id);
+      } else {
+        // Fallback to direct API call
+        await api.delete(`/api/${userId}/tasks/${task.id}`);
+        toast.success("Task deleted successfully");
+        onUpdate();
+      }
+      setShowDeleteModal(false);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || "Failed to delete task");
     } finally {
@@ -185,12 +198,11 @@ export function TaskCard({ task, userId, onEdit, onUpdate }: TaskCardProps) {
                   Edit
                 </button>
                 <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="w-full px-4 py-2 flex items-center gap-2 hover:bg-red-500/20 text-red-400 transition-colors text-left disabled:opacity-50"
+                  onClick={handleDeleteClick}
+                  className="w-full px-4 py-2 flex items-center gap-2 hover:bg-red-500/20 text-red-400 transition-colors text-left"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {isDeleting ? "Deleting..." : "Delete"}
+                  Delete
                 </button>
               </div>
             </>
@@ -198,6 +210,15 @@ export function TaskCard({ task, userId, onEdit, onUpdate }: TaskCardProps) {
         </div>
       </div>
       </div>
+
+      {/* Delete Modal */}
+      <TaskDeleteModal
+        isOpen={showDeleteModal}
+        taskTitle={task.title}
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </motion.div>
   );
 }

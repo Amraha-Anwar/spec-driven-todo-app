@@ -7,10 +7,12 @@ import { TaskCard } from "./task-card";
 import { TaskEditModal } from "./task-edit-modal";
 import { AddTaskFormAdvanced } from "./add-task-form-advanced";
 import { Search, TrendingUp } from "lucide-react";
+import { api } from "../../lib/api";
+import { toast } from "../../lib/toast";
 
 export function TaskListAdvanced() {
   const { tasks, isLoading, isError, mutate } = useTasks();
-  
+
   // Get userId from the first task (since useTasks already filters by userId)
   const userId = tasks?.[0]?.user_id;
 
@@ -19,9 +21,49 @@ export function TaskListAdvanced() {
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("created");
+  const [deletingTaskIds, setDeletingTaskIds] = useState<Set<string>>(new Set());
+
+  // Optimistic delete handler
+  const handleOptimisticDelete = async (taskId: string) => {
+    // Add to deleting set for optimistic UI
+    setDeletingTaskIds(prev => new Set(prev).add(taskId));
+
+    try {
+      // Perform deletion
+      await api.delete(`/api/${userId}/tasks/${taskId}`);
+
+      // Optimistically update the cache by removing the task
+      mutate(
+        (currentTasks: any[] | undefined) => {
+          if (!currentTasks) return currentTasks;
+          return currentTasks.filter((t: any) => t.id !== taskId);
+        },
+        false // Don't revalidate immediately
+      );
+
+      toast.success("Task deleted successfully");
+
+      // Revalidate after a short delay
+      setTimeout(() => mutate(), 300);
+    } catch (error: any) {
+      // On error, revert the optimistic update
+      toast.error(error.response?.data?.detail || "Failed to delete task");
+      mutate(); // Revalidate to restore the task
+    } finally {
+      // Remove from deleting set
+      setDeletingTaskIds(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  };
 
   // Filter and sort tasks
   let filteredTasks = tasks || [];
+
+  // Filter out tasks being deleted (optimistic UI)
+  filteredTasks = filteredTasks.filter((task: any) => !deletingTaskIds.has(task.id));
 
   // Search
   if (searchQuery) {
@@ -220,6 +262,7 @@ export function TaskListAdvanced() {
             userId={userId}
             onEdit={() => setEditingTask(task)}
             onUpdate={mutate}
+            onDelete={handleOptimisticDelete}
           />
         ))}
       </div>
