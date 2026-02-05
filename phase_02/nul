@@ -1,0 +1,14 @@
+D:\todo-evolution\phase_02\backend\src:
+total 16
+drwxr-xr-x 1 pc 197121    0 Feb  4 23:20 .
+drwxr-xr-x 1 pc 197121    0 Feb  4 23:20 ..
+drwxr-xr-x 1 pc 197121    0 Feb  4 20:04 __pycache__
+drwxr-xr-x 1 pc 197121    0 Feb  4 20:04 api
+drwxr-xr-x 1 pc 197121    0 Feb  4 20:04 core
+drwxr-xr-x 1 pc 197121    0 Feb  4 20:04 database
+drwxr-xr-x 1 pc 197121    0 Feb  4 20:04 db
+-rw-r--r-- 1 pc 197121 1783 Feb  5 15:20 main.py
+drwxr-xr-x 1 pc 197121    0 Feb  4 20:04 models
+drwxr-xr-x 1 pc 197121    0 Feb  4 22:50 plannoir_backend.egg-info
+drwxr-xr-x 1 pc 197121    0 Feb  4 20:04 schemas
+drwxr-xr-x 1 pc 197121    0 Feb  4 23:58 services

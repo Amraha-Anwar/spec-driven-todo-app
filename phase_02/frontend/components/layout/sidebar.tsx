@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "../../lib/auth-client";
 import { Avatar } from "../ui/avatar";
-import { useState, useEffect } from "react";
+import { useAuth } from "../../app/hooks/use-auth";
 
 const navigation = [
   { name: "Home", href: "/dashboard", icon: Home },
@@ -18,15 +18,7 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [session, setSession] = useState<any>(null);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data } = await authClient.getSession();
-      setSession(data);
-    };
-    getSession();
-  }, []);
+  const { data: session } = useAuth();
 
   const handleSignOut = async () => {
     await authClient.signOut({
