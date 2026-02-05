@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { authClient } from "../../../lib/auth-client";
 import { Avatar } from "../../../components/ui/avatar";
 import { toast } from "../../../lib/toast";
-import { User, Mail, Save } from "lucide-react";
+import { User, Mail, Save, Upload, Check } from "lucide-react";
 
 export default function SettingsPage() {
   const [session, setSession] = useState<any>(null);
   const [name, setName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const getSession = async () => {
@@ -34,9 +37,55 @@ export default function SettingsPage() {
     }
   };
 
-  const handleAvatarChange = (file: File) => {
-    toast.info("Avatar upload feature coming soon!");
-    console.log("Selected file:", file);
+  const handleAvatarChange = async (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file (JPG, PNG, GIF, etc.)");
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Read file as base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64String = reader.result as string;
+
+          // Update user with image URL (using base64 data URL)
+          await authClient.updateUser({
+            image: base64String,
+          });
+
+          // Show preview
+          setPreviewUrl(base64String);
+
+          // Refresh session to get updated user data
+          const { data } = await authClient.getSession();
+          setSession(data);
+
+          toast.success("Profile picture updated successfully!");
+        } catch (error: any) {
+          console.error("Upload error:", error);
+          toast.error(error?.message || "Failed to update profile picture");
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error: any) {
+      console.error("File read error:", error);
+      toast.error("Failed to process image");
+      setUploading(false);
+    }
   };
 
   return (
@@ -48,22 +97,57 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile Section */}
-      <div className="glassmorphic rounded-xl border border-white/10 p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="glassmorphic-3d rounded-xl border border-white/10 p-6"
+      >
         <h2 className="text-xl font-semibold mb-6">Profile</h2>
 
         <div className="space-y-6">
           {/* Avatar */}
           <div className="flex items-center gap-6">
-            <Avatar
-              name={session?.user?.name || "User"}
-              imageUrl={session?.user?.image}
-              size="lg"
-              editable
-              onImageChange={handleAvatarChange}
-            />
+            <div className="relative">
+              <Avatar
+                name={session?.user?.name || "User"}
+                imageUrl={previewUrl || session?.user?.image}
+                size="lg"
+                editable
+                onImageChange={handleAvatarChange}
+              />
+              {uploading && (
+                <motion.div
+                  className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                    className="w-6 h-6 border-2 border-white/30 border-t-pink-red rounded-full"
+                  />
+                </motion.div>
+              )}
+              {!uploading && previewUrl && (
+                <motion.div
+                  className="absolute inset-0 rounded-full flex items-center justify-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <Check className="w-6 h-6 text-green-400 drop-shadow-lg" />
+                </motion.div>
+              )}
+            </div>
             <div>
-              <p className="font-medium mb-1">Profile Picture</p>
-              <p className="text-sm text-gray-400">Click on avatar to upload new image</p>
+              <p className="font-medium mb-1 flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                Profile Picture
+              </p>
+              <p className="text-sm text-gray-400">
+                {uploading ? "Uploading..." : "Click on avatar to upload new image"}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Max 5MB, JPG/PNG/GIF</p>
             </div>
           </div>
 
@@ -106,10 +190,15 @@ export default function SettingsPage() {
             {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Preferences Section */}
-      <div className="glassmorphic rounded-xl border border-white/10 p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="glassmorphic-3d rounded-xl border border-white/10 p-6"
+      >
         <h2 className="text-xl font-semibold mb-6">Preferences</h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -132,7 +221,7 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

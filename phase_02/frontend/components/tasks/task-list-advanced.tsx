@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { useTasks } from "../../app/hooks/use-tasks";
 import { TaskCard } from "./task-card";
 import { TaskEditModal } from "./task-edit-modal";
 import { AddTaskFormAdvanced } from "./add-task-form-advanced";
-import { Search } from "lucide-react";
+import { Search, TrendingUp } from "lucide-react";
 
 export function TaskListAdvanced() {
   const { tasks, isLoading, isError, mutate } = useTasks();
@@ -68,28 +69,79 @@ export function TaskListAdvanced() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glassmorphic rounded-lg p-4 border border-white/10">
+        <motion.div
+          whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+          className="glassmorphic-3d rounded-lg p-4 border border-white/10"
+        >
           <p className="text-gray-400 text-sm">Total</p>
-          <p className="text-2xl font-bold">{tasks?.length || 0}</p>
-        </div>
-        <div className="glassmorphic rounded-lg p-4 border border-yellow-500/30">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-3xl font-bold"
+          >
+            {tasks?.length || 0}
+          </motion.p>
+        </motion.div>
+
+        <motion.div
+          whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+          className="glassmorphic-3d rounded-lg p-4 border border-yellow-500/30"
+        >
           <p className="text-gray-400 text-sm">Pending</p>
-          <p className="text-2xl font-bold text-yellow-400">{pendingCount}</p>
-        </div>
-        <div className="glassmorphic rounded-lg p-4 border border-green-500/30">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-3xl font-bold text-yellow-400"
+          >
+            {pendingCount}
+          </motion.p>
+        </motion.div>
+
+        <motion.div
+          whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+          className="glassmorphic-3d rounded-lg p-4 border border-green-500/30"
+        >
           <p className="text-gray-400 text-sm">Completed</p>
-          <p className="text-2xl font-bold text-green-400">{completedCount}</p>
-        </div>
-        <div className="glassmorphic rounded-lg p-4 border border-pink-red/30">
+          <div className="flex items-center gap-2">
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-3xl font-bold text-green-400"
+            >
+              {completedCount}
+            </motion.p>
+            {completedCount > 0 && (
+              <TrendingUp className="w-4 h-4 text-green-400" />
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div
+          whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+          className="glassmorphic-3d rounded-lg p-4 border border-pink-red/30"
+        >
           <p className="text-gray-400 text-sm">Completion</p>
-          <p className="text-2xl font-bold text-pink-red">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="text-3xl font-bold text-pink-red"
+          >
             {tasks?.length ? Math.round((completedCount / tasks.length) * 100) : 0}%
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
       </div>
 
       {/* Filters & Search */}
-      <div className="glassmorphic rounded-xl border border-white/10 p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="glassmorphic-3d rounded-xl border border-white/10 p-4"
+      >
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="relative">
@@ -137,7 +189,7 @@ export function TaskListAdvanced() {
             <option value="priority">Sort by Priority</option>
           </select>
         </div>
-      </div>
+      </motion.div>
 
       {/* Tasks List */}
       <div className="space-y-4">
