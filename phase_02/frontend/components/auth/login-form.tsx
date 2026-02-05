@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "../../lib/auth-client";
-import { showErrorToast, showSuccessToast } from "../ui/toast";
+import { toast } from "../../lib/toast";
 
 export const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -20,13 +20,13 @@ export const LoginForm = () => {
       });
 
       if (error) {
-        showErrorToast(error.message || "Login failed");
+        toast.error(error.message || "Invalid email or password");
       } else {
-        showSuccessToast("Welcome back!");
+        toast.success("Welcome back!");
         router.push("/dashboard");
       }
     } catch (err) {
-      showErrorToast("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
     } finally {
       setLoading(false);
     }

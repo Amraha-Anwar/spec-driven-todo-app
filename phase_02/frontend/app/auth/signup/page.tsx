@@ -45,8 +45,10 @@ export default function SignUpPage() {
         router.push('/dashboard');
         router.refresh();
       }
-    } catch (err) {
-      toast.error('An unexpected error occurred');
+    } catch (err: any) {
+      const message = err?.response?.data?.detail
+        || (err?.request ? 'Network error. Please check your connection.' : 'An unexpected error occurred');
+      toast.error(message);
       console.error(err);
     } finally {
       setLoading(false);
