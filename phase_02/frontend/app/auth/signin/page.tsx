@@ -46,8 +46,10 @@ export default function SignInPage() {
         // the browser session and cookies are fully synchronized before landing on the dashboard.
         window.location.href = '/dashboard';
       }
-    } catch (err) {
-      toast.error('An unexpected error occurred');
+    } catch (err: any) {
+      const message = err?.response?.data?.detail
+        || (err?.request ? 'Network error. Please check your connection.' : 'An unexpected error occurred');
+      toast.error(message);
       console.error(err);
     } finally {
       setLoading(false);

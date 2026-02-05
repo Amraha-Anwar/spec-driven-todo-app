@@ -22,12 +22,16 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setIsSaving(true);
-    
-    // Simulate API call (implement actual API call to update user profile)
-    setTimeout(() => {
-      toast.success("Settings saved successfully!");
+    try {
+      await authClient.updateUser({ name });
+      const { data } = await authClient.getSession();
+      setSession(data);
+      toast.success("Profile updated successfully!");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to update profile");
+    } finally {
       setIsSaving(false);
-    }, 1000);
+    }
   };
 
   const handleAvatarChange = (file: File) => {

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { authClient } from "../../lib/auth-client"; 
-import { showErrorToast, showSuccessToast } from "../ui/toast";
+import { toast } from "../../lib/toast";
 
 export const SignupForm = () => {
   const [email, setEmail] = useState("");
@@ -23,11 +23,11 @@ export const SignupForm = () => {
       onError: (ctx) => {
         setLoading(false);
         // This will alert exactly what the 422 error is (e.g. "Email already exists")
-        showErrorToast(ctx.error.message || "Signup failed");
+        toast.error(ctx.error.message || "Signup failed");
       },
       onSuccess: () => {
         setLoading(false);
-        showSuccessToast("Welcome!");
+        toast.success("Welcome!");
         window.location.href = "/dashboard";
       }
     });

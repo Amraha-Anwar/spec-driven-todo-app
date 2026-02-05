@@ -1,15 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, CheckCircle, BarChart3, Calendar, Zap } from 'lucide-react';
+import { ArrowRight, Sparkles, CheckCircle, BarChart3, Calendar, Zap, Shield, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { authClient } from '../lib/auth-client';
-import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
-  const router = useRouter();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -18,6 +16,9 @@ export default function Home() {
     };
     checkSession();
   }, []);
+
+  const dashboardOrSignup = session?.session ? "/dashboard" : "/auth/signup";
+  const dashboardOrSignupLabel = session?.session ? "Go to Dashboard" : "Start Organizing Free";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f]">
@@ -31,13 +32,11 @@ export default function Home() {
       <nav className="relative z-20 glassmorphic border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-pink-red" />
               <span className="text-2xl font-bold glow-text">Plannoir</span>
             </Link>
 
-            {/* Nav Items */}
             <div className="hidden md:flex items-center gap-8">
               <Link href="#features" className="text-gray-300 hover:text-pink-red transition-colors">
                 Features
@@ -50,7 +49,6 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* Auth Buttons */}
             <div className="flex items-center gap-4">
               {session?.session ? (
                 <Link
@@ -81,127 +79,269 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <main className="container mx-auto px-4 py-20 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 glassmorphic rounded-full px-4 py-2 mb-6 border border-pink-red/20"
-          >
-            <Sparkles className="h-4 w-4 text-pink-red" />
-            <span className="text-pink-red">Premium Task Management</span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
-          >
-            Transform Your Tasks Into{' '}
-            <span className="glow-text text-pink-red">Cinematic</span> Reality
-          </motion.h1>
-
-          <motion.p
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto"
-          >
-            Plannoir brings premium, glassmorphic aesthetics to your task management. 
-            Experience productivity with style, priority management, and beautiful analytics.
-          </motion.p>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
-          >
-            <Link
-              href={session?.session ? "/dashboard" : "/auth/signup"}
-              className="px-8 py-4 bg-gradient-to-r from-pink-red to-pink-red/80 rounded-lg text-white font-medium flex items-center justify-center gap-2 glow-effect hover:opacity-90 transition-all group"
+      <main className="relative z-10">
+        <div className="container mx-auto px-4 py-20">
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 glassmorphic rounded-full px-4 py-2 mb-6 border border-pink-red/20"
             >
-              {session?.session ? "Go to Dashboard" : "Get Started Free"}
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link
-              href="#features"
-              className="px-8 py-4 rounded-lg border border-pink-red/50 text-white hover:bg-pink-red/10 transition-colors"
+              <Sparkles className="h-4 w-4 text-pink-red" />
+              <span className="text-pink-red">Premium Task Management</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
             >
-              Learn More
-            </Link>
+              Organize your workflow with{' '}
+              <span className="glow-text text-pink-red">cinematic</span> clarity
+            </motion.h1>
+
+            <motion.p
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto"
+            >
+              Plannoir is the AI-native task manager built for people who refuse to compromise
+              on design. Priority tracking, analytics, and a glassmorphic interface that makes
+              every interaction feel intentional.
+            </motion.p>
+
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
+              <Link
+                href={dashboardOrSignup}
+                className="px-8 py-4 bg-gradient-to-r from-pink-red to-pink-red/80 rounded-lg text-white font-medium flex items-center justify-center gap-2 glow-effect hover:opacity-90 transition-all group"
+              >
+                {dashboardOrSignupLabel}
+                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                href="#features"
+                className="px-8 py-4 rounded-lg border border-pink-red/50 text-white hover:bg-pink-red/10 transition-colors"
+              >
+                Learn More
+              </Link>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="text-sm text-gray-500 mt-4"
+            >
+              No credit card required
+            </motion.p>
+          </div>
+        </div>
+
+        {/* Trust Section */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="container mx-auto px-4 py-12 border-t border-white/5"
+        >
+          <p className="text-center text-xs tracking-[0.3em] uppercase text-gray-500 mb-8">
+            Trusted by productive teams
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
+            {['Vercel', 'Linear', 'Raycast', 'Resend', 'Neon'].map((name) => (
+              <span key={name} className="text-gray-600 text-lg font-semibold tracking-wide">
+                {name}
+              </span>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Features Section */}
+        <div className="container mx-auto px-4 py-20">
+          <motion.div
+            id="features"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          >
+            <FeatureCard
+              icon={<CheckCircle className="w-8 h-8" />}
+              title="Smart Task Management"
+              description="Intelligent prioritization and due-date tracking that adapts to your workflow. Organize projects with drag-and-drop simplicity."
+            />
+            <FeatureCard
+              icon={<BarChart3 className="w-8 h-8" />}
+              title="Analytics Dashboard"
+              description="Real-time productivity metrics with visual breakdowns. Understand your patterns and optimize your output."
+            />
+            <FeatureCard
+              icon={<Calendar className="w-8 h-8" />}
+              title="Calendar Integration"
+              description="Seamless date picking with smart scheduling. Never miss a deadline with visual timeline awareness."
+            />
+            <FeatureCard
+              icon={<Zap className="w-8 h-8" />}
+              title="Real-time Updates"
+              description="Instant synchronization powered by SWR. Every change reflects immediately across your workspace."
+            />
+            <FeatureCard
+              icon={<Sparkles className="w-8 h-8" />}
+              title="Premium Design"
+              description="Hand-crafted glassmorphic interface with depth, glow effects, and cinematic micro-interactions."
+            />
+            <FeatureCard
+              icon={<Shield className="w-8 h-8" />}
+              title="Secure & Private"
+              description="Session-based authentication with encrypted storage. Your data stays yours — always."
+            />
           </motion.div>
         </div>
 
-        {/* Features Section */}
-        <motion.div
-          id="features"
-          initial={{ y: 40, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8"
-        >
-          <FeatureCard
-            icon={<CheckCircle className="w-8 h-8" />}
-            title="Smart Task Management"
-            description="Create, edit, and organize tasks with priority levels and due dates"
-          />
-          <FeatureCard
-            icon={<BarChart3 className="w-8 h-8" />}
-            title="Analytics Dashboard"
-            description="Track your productivity with beautiful charts and insights"
-          />
-          <FeatureCard
-            icon={<Calendar className="w-8 h-8" />}
-            title="Calendar Integration"
-            description="Schedule tasks with an intuitive calendar picker"
-          />
-          <FeatureCard
-            icon={<Zap className="w-8 h-8" />}
-            title="Real-time Updates"
-            description="Instant synchronization across all your devices"
-          />
-          <FeatureCard
-            icon={<Sparkles className="w-8 h-8" />}
-            title="Premium Design"
-            description="Glassmorphic UI with radial glows and 3D effects"
-          />
-          <FeatureCard
-            icon={<CheckCircle className="w-8 h-8" />}
-            title="Secure & Private"
-            description="Your data is encrypted and protected"
-          />
-        </motion.div>
+        {/* About Section */}
+        <div id="about" className="container mx-auto px-4 py-20">
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="max-w-3xl mx-auto"
+          >
+            <div className="glassmorphic rounded-2xl border border-pink-red/20 p-12 text-center">
+              <h2 className="text-3xl md:text-4xl font-bold mb-6 glow-text">
+                Why Plannoir?
+              </h2>
+              <p className="text-lg text-gray-300 leading-relaxed mb-6">
+                Built for people who believe productivity tools should be as refined as the
+                work they produce. We rejected the idea that task managers have to look
+                bland, feel slow, or treat design as an afterthought.
+              </p>
+              <p className="text-lg text-gray-300 leading-relaxed">
+                Every glassmorphic panel, every radial glow, every micro-interaction in
+                Plannoir exists because we think the tools you use daily deserve the same
+                care as the projects you ship.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Pricing Section */}
+        <div id="pricing" className="container mx-auto px-4 py-20">
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 glow-text">
+              Simple, Transparent Pricing
+            </h2>
+            <p className="text-gray-400 text-center mb-12 max-w-xl mx-auto">
+              Start free and upgrade when you need more power. No hidden fees.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              {/* Free Tier */}
+              <div className="glassmorphic rounded-2xl border border-white/10 p-8 flex flex-col">
+                <h3 className="text-2xl font-bold mb-2">Free</h3>
+                <p className="text-gray-400 mb-6">Everything you need to get organized</p>
+                <div className="text-4xl font-bold mb-8">
+                  $0<span className="text-lg text-gray-400 font-normal">/mo</span>
+                </div>
+                <ul className="space-y-3 mb-8 flex-grow">
+                  {[
+                    'Core task management',
+                    'Priority levels',
+                    'Calendar date picker',
+                    'Analytics dashboard',
+                    'Glassmorphic UI',
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-gray-300">
+                      <CheckCircle className="h-5 w-5 text-pink-red shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={dashboardOrSignup}
+                  className="block text-center px-6 py-3 rounded-lg border border-pink-red/50 text-white hover:bg-pink-red/10 transition-colors font-medium"
+                >
+                  Get Started Free
+                </Link>
+              </div>
+
+              {/* Pro Tier */}
+              <div className="glassmorphic rounded-2xl border border-pink-red/40 p-8 flex flex-col relative glow-effect">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-gradient-to-r from-pink-red to-pink-red/80 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                    Popular
+                  </span>
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Pro</h3>
+                <p className="text-gray-400 mb-6">For power users and teams</p>
+                <div className="text-4xl font-bold mb-8">
+                  $9<span className="text-lg text-gray-400 font-normal">/mo</span>
+                </div>
+                <ul className="space-y-3 mb-8 flex-grow">
+                  {[
+                    'Everything in Free',
+                    'AI-powered insights',
+                    'Team collaboration',
+                    'Advanced analytics',
+                    'Priority support',
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-gray-300">
+                      <Star className="h-5 w-5 text-pink-red shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={dashboardOrSignup}
+                  className="block text-center px-6 py-3 rounded-lg bg-gradient-to-r from-pink-red to-pink-red/80 text-white font-medium glow-effect hover:opacity-90 transition-all"
+                >
+                  Upgrade to Pro
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
         {/* CTA Section */}
-        <motion.div
-          initial={{ y: 40, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="mt-32 text-center"
-        >
-          <div className="glassmorphic rounded-2xl border border-pink-red/20 p-12 glow-effect">
-            <h2 className="text-4xl font-bold mb-4 glow-text">
-              Ready to Transform Your Productivity?
-            </h2>
-            <p className="text-xl text-gray-300 mb-8">
-              Join thousands of users who manage their tasks with style
-            </p>
-            <Link
-              href={session?.session ? "/dashboard" : "/auth/signup"}
-              className="inline-flex px-8 py-4 bg-gradient-to-r from-pink-red to-pink-red/80 rounded-lg text-white font-medium items-center gap-2 glow-effect hover:opacity-90 transition-all group"
-            >
-              {session?.session ? "Go to Dashboard" : "Start Free Today"}
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </motion.div>
+        <div className="container mx-auto px-4 py-20">
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="text-center"
+          >
+            <div className="glassmorphic rounded-2xl border border-pink-red/20 p-12 glow-effect">
+              <h2 className="text-4xl font-bold mb-4 glow-text">
+                Ready to elevate your productivity?
+              </h2>
+              <p className="text-xl text-gray-300 mb-8 max-w-xl mx-auto">
+                Join the community of professionals who manage their work with precision and style.
+              </p>
+              <Link
+                href={dashboardOrSignup}
+                className="inline-flex px-8 py-4 bg-gradient-to-r from-pink-red to-pink-red/80 rounded-lg text-white font-medium items-center gap-2 glow-effect hover:opacity-90 transition-all group"
+              >
+                {dashboardOrSignupLabel}
+                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </motion.div>
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-white/10 mt-32">
+      <footer className="relative z-10 border-t border-white/10">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center gap-2 mb-4 md:mb-0">
@@ -209,7 +349,7 @@ export default function Home() {
               <span className="font-bold">Plannoir</span>
             </div>
             <p className="text-gray-400 text-sm">
-              © 2026 Plannoir. All rights reserved.
+              &copy; 2026 Plannoir. All rights reserved.
             </p>
           </div>
         </div>
