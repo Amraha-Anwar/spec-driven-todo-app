@@ -33,13 +33,13 @@ export function TaskDeleteModal({
           />
 
           {/* Modal Container with Centering */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="w-full max-w-md max-h-[90vh] overflow-auto"
+              className="w-full max-w-md max-h-[90vh] overflow-auto pointer-events-auto"
             >
               <div className="glassmorphic-3d rounded-xl border border-red-500/30 p-6 shadow-2xl">
               {/* Header */}
@@ -64,13 +64,16 @@ export function TaskDeleteModal({
                     <p className="text-sm text-gray-400">This action cannot be undone</p>
                   </div>
                 </div>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={onCancel}
-                  className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
                   disabled={isDeleting}
+                  aria-label="Close"
                 >
                   <X className="w-5 h-5" />
-                </button>
+                </motion.button>
               </div>
 
               {/* Content */}

@@ -75,14 +75,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Mobile Sidebar Toggle Button (visible only on ≤768px) */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
+      <div className="md:hidden fixed top-3 left-3 z-[45]">
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={toggleSidebar}
-          className="p-3 glassmorphic-3d rounded-lg border border-white/10 text-white"
+          className="p-2 rounded-md bg-black/40 backdrop-blur-sm border border-white/20 text-white/80 hover:text-white hover:bg-black/60 transition-all"
           aria-label="Toggle sidebar"
         >
-          {sidebarCollapsed ? <Menu className="h-6 w-6" /> : <X className="h-6 w-6" />}
+          {sidebarCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
         </motion.button>
       </div>
 
@@ -121,7 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           marginLeft: sidebarCollapsed ? 0 : 256,
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="min-h-screen p-8 relative z-10 md:ml-64"
+        className="min-h-screen p-8 relative z-10 md:ml-64 pt-16 md:pt-8"
       >
         <div className="max-w-7xl mx-auto">
           {children}
