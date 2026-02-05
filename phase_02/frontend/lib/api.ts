@@ -2,7 +2,7 @@ import axios from "axios";
 import { authClient } from "./auth-client";
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://amraha-anwar-plannior-backend.hf.space/api",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://amraha-anwar-plannior-backend.hf.space",
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
