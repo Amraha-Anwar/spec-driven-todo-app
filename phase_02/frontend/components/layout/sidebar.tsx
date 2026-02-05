@@ -15,7 +15,11 @@ const navigation = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isSlim?: boolean;
+}
+
+export function Sidebar({ isSlim = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useAuth();
@@ -36,11 +40,25 @@ export function Sidebar() {
       initial={{ x: -256, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="fixed left-0 top-0 h-screen w-64 glassmorphic-3d border-r border-white/10 flex flex-col"
+      className={`fixed left-0 top-0 h-screen glassmorphic-3d border-r border-white/10 flex flex-col transition-all duration-300 ${
+        isSlim ? "w-20" : "w-64"
+      }`}
     >
       {/* Logo */}
-      <div className="p-6 border-b border-white/10">
-        <h1 className="text-2xl font-bold glow-text">Plannoir</h1>
+      <div className={`border-b border-white/10 flex items-center justify-center ${isSlim ? "p-4" : "p-6"}`}>
+        <motion.div
+          animate={{ scale: isSlim ? 0.8 : 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <h1 className={`font-bold glow-text ${isSlim ? "text-lg hidden" : "text-2xl"}`}>
+            Plannoir
+          </h1>
+          {isSlim && (
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-red to-pink-red/50 flex items-center justify-center">
+              <span className="text-white font-bold text-sm">P</span>
+            </div>
+          )}
+        </motion.div>
       </div>
 
       {/* User Profile */}
@@ -48,22 +66,27 @@ export function Sidebar() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className="p-6 border-b border-white/10 flex items-center gap-3 hover:bg-white/5 rounded-lg mx-2 my-2 transition-all"
+        className={`border-b border-white/10 flex items-center gap-3 hover:bg-white/5 rounded-lg transition-all ${
+          isSlim ? "p-3 m-2 justify-center" : "p-6 mx-2 my-2"
+        }`}
       >
         <motion.div whileHover={{ scale: 1.1 }}>
           <Avatar
             name={session?.user?.name || "User"}
             imageUrl={session?.user?.image}
+            size={isSlim ? "sm" : "md"}
           />
         </motion.div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{session?.user?.name}</p>
-          <p className="text-xs text-gray-400 truncate">{session?.user?.email}</p>
-        </div>
+        {!isSlim && (
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{session?.user?.name}</p>
+            <p className="text-xs text-gray-400 truncate">{session?.user?.email}</p>
+          </div>
+        )}
       </motion.div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className={`flex-1 space-y-2 ${isSlim ? "p-3" : "p-4"}`}>
         {navigation.map((item, index) => {
           const isActive = pathname === item.href;
           return (
@@ -75,11 +98,12 @@ export function Sidebar() {
             >
               <Link
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${
+                title={isSlim ? item.name : undefined}
+                className={`flex items-center gap-3 rounded-lg transition-all group ${
                   isActive
                     ? "bg-pink-red/20 text-pink-red glow-effect"
                     : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
+                } ${isSlim ? "p-3 justify-center" : "px-4 py-3"}`}
               >
                 <motion.div
                   whileHover={{ scale: 1.1, rotate: 5 }}
@@ -87,7 +111,7 @@ export function Sidebar() {
                 >
                   <item.icon className="w-5 h-5" />
                 </motion.div>
-                <span className="font-medium">{item.name}</span>
+                {!isSlim && <span className="font-medium">{item.name}</span>}
               </Link>
             </motion.div>
           );
@@ -99,17 +123,22 @@ export function Sidebar() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="p-4 border-t border-white/10"
+        className={`border-t border-white/10 ${isSlim ? "p-3" : "p-4"}`}
       >
         <motion.button
-          whileHover={{ scale: 1.02, x: 5 }}
+          whileHover={{ scale: 1.02 }}
           onClick={handleSignOut}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-all w-full group"
+          title={isSlim ? "Sign Out" : undefined}
+          className={`rounded-lg text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-all group ${
+            isSlim
+              ? "p-3 w-full flex justify-center"
+              : "flex items-center gap-3 px-4 py-3 w-full"
+          }`}
         >
           <motion.div whileHover={{ rotate: -10 }}>
             <LogOut className="w-5 h-5" />
           </motion.div>
-          <span className="font-medium">Sign Out</span>
+          {!isSlim && <span className="font-medium">Sign Out</span>}
         </motion.button>
       </motion.div>
     </motion.div>

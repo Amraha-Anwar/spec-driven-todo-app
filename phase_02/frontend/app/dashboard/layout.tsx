@@ -12,14 +12,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [isPending, setIsPending] = useState(true);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<"full" | "slim" | "hidden">("full");
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Load sidebar state from localStorage on mount
+  // Detect mobile and load sidebar state from localStorage on mount
   useEffect(() => {
-    const savedState = localStorage.getItem("dashboardSidebarCollapsed");
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    const savedState = localStorage.getItem("dashboardSidebarMode");
     if (savedState !== null) {
-      setSidebarCollapsed(JSON.parse(savedState));
+      setSidebarMode(JSON.parse(savedState));
     }
+
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -43,11 +53,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     checkSession();
   }, [router]);
 
-  // Toggle sidebar and persist to localStorage
+  // Toggle sidebar modes and persist to localStorage
   const toggleSidebar = () => {
-    const newState = !sidebarCollapsed;
-    setSidebarCollapsed(newState);
-    localStorage.setItem("dashboardSidebarCollapsed", JSON.stringify(newState));
+    let newMode: "full" | "slim" | "hidden";
+
+    if (isMobile) {
+      // Mobile: full → hidden → full
+      newMode = sidebarMode === "full" ? "hidden" : "full";
+    } else {
+      // Desktop: full → slim → full
+      newMode = sidebarMode === "full" ? "slim" : "full";
+    }
+
+    setSidebarMode(newMode);
+    localStorage.setItem("dashboardSidebarMode", JSON.stringify(newMode));
   };
 
   if (isPending) {
@@ -74,43 +93,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[150px]" />
       </div>
 
-      {/* Mobile Sidebar Toggle Button (visible only on ≤768px) */}
-      <div className="md:hidden fixed top-3 left-3 z-[45]">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={toggleSidebar}
-          className="p-2 rounded-md bg-black/40 backdrop-blur-sm border border-white/20 text-white/80 hover:text-white hover:bg-black/60 transition-all"
-          aria-label="Toggle sidebar"
-        >
-          {sidebarCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
-        </motion.button>
-      </div>
+      {/* Sidebar Toggle Button (visible on all screen sizes) */}
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={toggleSidebar}
+        className="fixed top-3 right-3 md:top-4 md:left-3 z-[45] p-2 rounded-md bg-black/40 backdrop-blur-sm border border-white/20 text-white/80 hover:text-white hover:bg-black/60 transition-all"
+        aria-label="Toggle sidebar"
+      >
+        {sidebarMode === "full" ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
+      </motion.button>
 
-      {/* Sidebar (responsive) */}
-      <AnimatePresence>
-        {!sidebarCollapsed && (
+      {/* Sidebar (responsive with full/slim/hidden modes) */}
+      <AnimatePresence mode="wait">
+        {sidebarMode !== "hidden" && (
           <motion.div
+            key={sidebarMode}
             initial={{ x: -256, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -256, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="md:block fixed md:relative z-40"
+            className="fixed md:relative z-40"
           >
-            <Sidebar />
+            <Sidebar isSlim={sidebarMode === "slim"} />
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Mobile Backdrop (click to close sidebar) */}
       <AnimatePresence>
-        {!sidebarCollapsed && (
+        {sidebarMode === "full" && isMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             onClick={toggleSidebar}
-            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
           />
         )}
       </AnimatePresence>
@@ -118,10 +136,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content (adjusts for sidebar state) */}
       <motion.div
         animate={{
-          marginLeft: sidebarCollapsed ? 0 : 256,
+          marginLeft:
+            sidebarMode === "hidden"
+              ? 0
+              : sidebarMode === "slim"
+                ? 80
+                : 256,
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="min-h-screen p-8 relative z-10 md:ml-64 pt-16 md:pt-8"
+        className={`min-h-screen p-8 relative z-10 ${!isMobile && sidebarMode !== "hidden" ? "md:block" : ""} pt-16 md:pt-8`}
       >
         <div className="max-w-7xl mx-auto">
           {children}
