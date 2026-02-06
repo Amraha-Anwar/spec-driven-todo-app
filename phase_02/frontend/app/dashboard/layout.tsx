@@ -7,14 +7,13 @@ import { Menu, X } from "lucide-react";
 import { authClient } from "../../lib/auth-client";
 import { Sidebar } from "../../components/layout/sidebar";
 import { Toaster } from "../../components/ui/toast";
-import { Z_INDEX } from "../../constants/zindex";
 import { useSidebarMode } from "../../hooks/useSidebarMode";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [isPending, setIsPending] = useState(true);
-  const { sidebarMode, isMobile, mounted, toggleSidebar } = useSidebarMode();
+  const { sidebarMode, isMobile, toggleSidebar } = useSidebarMode();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -61,14 +60,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[150px]" />
       </div>
 
-      {/* Sidebar Toggle Button (visible on all screen sizes) */}
+      {/* Sidebar Toggle Button - Fixed positioning to prevent overlap */}
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={toggleSidebar}
-        className="fixed top-3 right-3 md:top-4 md:left-3 z-[45] p-2 rounded-md bg-black/40 backdrop-blur-sm border border-white/20 text-white/80 hover:text-white hover:bg-black/60 transition-all"
+        className={`fixed z-[45] p-2 rounded-md bg-black/40 backdrop-blur-sm border border-white/20 text-white/80 hover:text-white hover:bg-black/60 transition-all 
+          ${isMobile 
+            ? "top-3 right-3" 
+            : (sidebarMode === "full" ? "top-4 left-[210px]" : "top-4 left-4")
+          }`}
         aria-label="Toggle sidebar"
       >
-        {sidebarMode === "full" ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {sidebarMode === "full" ? <X className="h-4 w-4" /> : <Menu className="h-5 w-5" />}
       </motion.button>
 
       {/* Sidebar (responsive with full/slim/hidden modes) */}
@@ -87,7 +90,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
       </AnimatePresence>
 
-      {/* Mobile Backdrop (click to close sidebar) */}
+      {/* Mobile Backdrop */}
       <AnimatePresence>
         {sidebarMode === "full" && isMobile && (
           <motion.div
@@ -101,7 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
       </AnimatePresence>
 
-      {/* Main Content (adjusts for sidebar state) */}
+      {/* Main Content */}
       <motion.div
         animate={{
           marginLeft: isMobile ? 0 : (sidebarMode === "hidden" ? 0 : (sidebarMode === "slim" ? 80 : 256))
