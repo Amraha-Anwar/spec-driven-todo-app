@@ -1,53 +1,189 @@
-# Tasks: Mobile Responsive & Interaction Debug
+# Implementation Tasks: Sidebar & Modal Refactor (Feature 010)
 
-**Input**: Design documents from `/specs/010-mobile-responsive-debug/`
-**Prerequisites**: plan.md ✅ (required), spec.md ✅ (required for user stories)
-
-**Organization**: Tasks grouped by user story to enable independent implementation and testing of each story.
+**Feature**: 010-mobile-responsive-debug | **Branch**: `010-mobile-responsive-debug`
+**Date**: 2026-02-06 | **Plan**: [plan.md](./plan.md) | **Architecture**: [architecture.md](./architecture.md)
 
 ---
 
-## Format: `[ID] [P?] [Story] Description`
+## Task Format
 
-- **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks)
-- **[Story]**: Which user story this task belongs to (e.g., [US1], [US2], [US3])
-- Exact file paths included in all descriptions
+Every task strictly follows this format:
 
----
+```
+- [ ] [TaskID] [P?] Description with exact file path
+```
 
-## Phase 1: Setup (No Setup Required — UI Layer Only)
-
-**Note**: Feature 010 is entirely frontend UI modifications. All infrastructure (auth, API, DB) already exists from previous features (009, etc.). No setup phase needed.
-
----
-
-## Phase 2: Foundational (Critical Blockers)
-
-**Purpose**: Core changes that MUST complete before user story work begins
-
-**⚠️ CRITICAL**: No user story work can begin until Phase 2 is complete
-
-### Build Verification Gate
-
-- [ ] T001 Verify `npx next build` passes with zero TypeScript errors before making any changes (baseline check)
-
-**Checkpoint**: Build baseline established — user story implementation can now begin
+- **Checkbox**: `- [ ]` (markdown)
+- **Task ID**: T001, T002, ... (sequential)
+- **[P]**: Optional, only if parallelizable
+- **Description**: Clear action with file path
 
 ---
 
-## Phase 3: User Story 1 - Fix Task Delete Functionality (Priority: P1) 🎯 MVP
+## Phase 1: Z-Index Audit & Constants (1-2 hours)
 
-**Goal**: Task deletion works with confirmation modal, optimistic UI, and proper error handling
+**Goal**: Establish explicit z-index hierarchy preventing all overlaps
+**Test**: Modal appears above sidebar at all sizes (375px, 768px, 1920px)
 
-**Independent Test**: Click delete button on any task → see confirmation modal → confirm → task disappears from list → API completes → no flash or revert. Works independently without other features.
+### Constants & Audit
 
-### Implementation for User Story 1
+- [ ] T001 Create `frontend/constants/zindex.ts` with values: BASE=0, CONTENT=10, MOBILE_BACKDROP=30, SIDEBAR=40, TOGGLE=45, MODAL_BACKDROP=50, MODAL_CONTENT=60
 
-- [ ] T002 [P] [US1] Inspect `frontend/components/dashboard/task-item.tsx` and identify delete button click handler. Fix event propagation and ensure onClick fires correctly. Test in browser console.
+- [ ] T002 [P] Audit `frontend/components/tasks/task-delete-modal.tsx` for existing z-index values
 
-- [ ] T003 [P] [US1] Create `frontend/components/tasks/task-delete-modal.tsx` (NEW) with:
-  - Modal confirmation dialog with "Cancel" and "Delete" buttons
-  - Accept props: `taskId`, `taskTitle`, `isOpen`, `onConfirm`, `onCancel`
+- [ ] T003 [P] Audit `frontend/app/dashboard/layout.tsx` for existing z-index values
+
+- [ ] T004 [P] Audit `frontend/components/layout/sidebar.tsx` for existing z-index values
+
+### Z-Index Updates
+
+- [ ] T005 [P] Update `frontend/components/tasks/task-delete-modal.tsx`: Change backdrop to z-50, modal container to z-60, verify `fixed inset-0` positioning
+
+- [ ] T006 [P] Update `frontend/app/dashboard/layout.tsx`: Set sidebar z-40, toggle button z-45, mobile backdrop z-30
+
+- [ ] T007 [P] Update `frontend/components/layout/sidebar.tsx`: Inherit z-40 from parent container
+
+- [ ] T008 [P] Update `frontend/app/globals.css`: Remove competing z-indexes from `.glassmorphic` and `.glow-effect` classes
+
+### Phase 1 Validation
+
+- [ ] T009 Build: `npx next build` in frontend (0 TypeScript errors), verify z-index constants referenced in components
+
+---
+
+## Phase 2: Sidebar Component Refactor (2-3 hours)
+
+**Goal**: Implement Mini (slim) mode for desktop, responsive toggle for mobile
+**Test**: Desktop full↔slim smooth, mobile full↔hidden with backdrop, no content overlap
+
+### Sidebar Component
+
+- [ ] T010 [P] Update `frontend/components/layout/sidebar.tsx` line 1-50: Add `isSlim?: boolean` and `isMobile?: boolean` props to interface
+
+- [ ] T011 [P] Update `frontend/components/layout/sidebar.tsx` line 44-58: Replace logo section - show "Plannoir" text when full, show "P" badge (w-8 h-8 gradient) when slim
+
+- [ ] T012 [P] Update `frontend/components/layout/sidebar.tsx` line 65-82: Update user profile - show full details (avatar + name/email) when full, only avatar when slim
+
+- [ ] T013 [P] Update `frontend/components/layout/sidebar.tsx` line 85-115: Update navigation - show labels when full, hide labels when slim (add title attribute for tooltip)
+
+- [ ] T014 [P] Update `frontend/components/layout/sidebar.tsx` line 39-42: Add dynamic width classes: `isSlim ? "w-20" : "w-64"` with smooth transition
+
+- [ ] T015 [P] Update `frontend/components/layout/sidebar.tsx` padding: Reduce from `p-6` to `p-3` when slim, adjust all sections
+
+### Dashboard Layout Refactor
+
+- [ ] T016 Create `frontend/hooks/useSidebarMode.ts`: Export hook with useState (mode: full|slim|hidden), localStorage persistence, mobile detection
+
+- [ ] T017 [P] Update `frontend/app/dashboard/layout.tsx` line 18-33: Add useEffect with `window.innerWidth < 768` media query and resize listener
+
+- [ ] T018 [P] Update `frontend/app/dashboard/layout.tsx` line 47-60: Replace toggleSidebar logic - desktop (full↔slim), mobile (full↔hidden)
+
+- [ ] T019 [P] Update `frontend/app/dashboard/layout.tsx` line 88-102: Wrap sidebar in `<AnimatePresence mode="wait">` with slide animation (300ms, easeInOut)
+
+- [ ] T020 [P] Update `frontend/app/dashboard/layout.tsx` line 106-115: Add mobile backdrop overlay - z-30, click to close sidebar, only when `sidebarMode === "full" && isMobile`
+
+- [ ] T021 [P] Update `frontend/app/dashboard/layout.tsx` line 118-129: Animate content margin-left (256 desktop full / 80 slim / 0 mobile hidden), conditional on isMobile
+
+- [ ] T022 [P] Update `frontend/app/dashboard/layout.tsx` line 124: Add padding-top `pt-16 md:pt-8` to prevent toggle button overlap
+
+### Phase 2 Validation
+
+- [ ] T023 Build: `npx next build` (0 TypeScript errors)
+
+- [ ] T024 Visual test: Desktop 1920px sidebar full/slim toggle smooth; Mobile 375px sidebar full/hidden with backdrop; Responsive at 768px
+
+---
+
+## Phase 3: Modal Portal & Centering (1 hour)
+
+**Goal**: Break modal from overflow-hidden, ensure viewport centering
+**Test**: Modal centered at viewport (not parent), visible at all sizes, scrollable if needed
+
+### Portal Hook
+
+- [ ] T025 Create `frontend/hooks/useModalPortal.ts`: Export hook using React.createPortal, mounted state for SSR, target document.body
+
+- [ ] T026 [P] Update `frontend/hooks/index.ts`: Export useModalPortal from new hook file
+
+### Modal Update
+
+- [ ] T027 [P] Update `frontend/components/tasks/task-delete-modal.tsx` line 1-20: Import and call useModalPortal hook, wrap modal JSX
+
+- [ ] T028 [P] Update `frontend/components/tasks/task-delete-modal.tsx` line 36-43: Ensure fixed positioning `fixed inset-0 flex items-center justify-center`, verify z-index z-[60]
+
+- [ ] T029 [P] Update `frontend/components/tasks/task-delete-modal.tsx` line 42: Ensure `max-h-[85vh] overflow-auto` for scrolling, `my-auto` for vertical centering
+
+- [ ] T030 [P] Update `frontend/components/tasks/task-delete-modal.tsx` line 36: Add `pointer-events-none` to container, `pointer-events-auto` to modal content
+
+### Phase 3 Validation
+
+- [ ] T031 Build: `npx next build` (0 TypeScript errors)
+
+- [ ] T032 Visual test: Delete modal centered on all viewports (375px, 768px, 1920px), buttons visible, scrollable, above sidebar
+
+---
+
+## Phase 4: Framer Motion Transitions (1 hour)
+
+**Goal**: Smooth AnimatePresence animations for sidebar state changes
+**Test**: Sidebar animations smooth 60 FPS, 300ms duration, no layout jumps
+
+### Animation Configuration
+
+- [ ] T033 [P] Update `frontend/app/dashboard/layout.tsx` line 88-102: AnimatePresence `mode="wait"` already set, add exit/enter animations
+
+- [ ] T034 [P] Update `frontend/app/dashboard/layout.tsx` motion.div: Add `initial={{ x: -256, opacity: 0 }}`, `animate={{ x: 0, opacity: 1 }}`, `exit={{ x: -256, opacity: 0 }}`
+
+- [ ] T035 [P] Update `frontend/app/dashboard/layout.tsx` motion.div: Set `transition={{ duration: 0.3, ease: "easeInOut" }}`
+
+- [ ] T036 [P] Update `frontend/app/dashboard/layout.tsx` content motion.div: Animate margin-left transition (256 ↔ 80 ↔ 0)
+
+- [ ] T037 [P] Update `frontend/app/dashboard/layout.tsx` sidebar motion.div: Animate width transition (256 ↔ 80px)
+
+### Phase 4 Validation
+
+- [ ] T038 Build: `npx next build` (0 TypeScript errors)
+
+- [ ] T039 Performance: Chrome DevTools FPS meter 60 FPS during sidebar toggle transitions
+
+---
+
+## Phase 5: Visual Audit & Integration (1-2 hours)
+
+**Goal**: Remove overflow-hidden cutoffs, final integration testing
+**Test**: All components work together, glow effects visible, no truncation
+
+### Overflow Audit
+
+- [ ] T040 [P] Search `frontend/` for `overflow-hidden` pattern and document findings
+
+- [ ] T041 [P] Audit `frontend/app/dashboard/layout.tsx`: Remove unnecessary `overflow-hidden` if present
+
+- [ ] T042 [P] Audit `frontend/app/page.tsx`: Remove unnecessary `overflow-hidden` if present
+
+- [ ] T043 [P] Update `frontend/app/globals.css`: Ensure `.glassmorphic` and `.glow-effect` not constrained by overflow
+
+### Integration Testing
+
+- [ ] T044 [P] Test delete modal: Opens centered, buttons work, deletion succeeds, error handling
+
+- [ ] T045 [P] Test sidebar toggle: Smooth animation desktop/mobile, state persists
+
+- [ ] T046 [P] Test responsive: Behavior correct at 768px breakpoint
+
+- [ ] T047 [P] Test mobile backdrop: Click closes sidebar, no layout shift
+
+- [ ] T048 [P] Test toggle button: Always accessible z-45, not obscured
+
+- [ ] T049 [P] Test state persistence: localStorage works, reload persists sidebar state
+
+### Final Build & Verification
+
+- [ ] T050 Build: `npx next build` (0 TypeScript errors, 11/11 routes)
+
+- [ ] T051 TypeScript: `npx tsc --noEmit` (0 errors)
+
+- [ ] T052 Eslint: `npx eslint frontend/` (0 critical errors)
   - Framer Motion slide-in animation (300ms)
   - Lucide React `Trash2` icon
   - Keyboard support: Escape to cancel, Enter to confirm
