@@ -2,6 +2,8 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
+import { Z_INDEX } from "../../constants/zindex";
+import { useModalPortal } from "../../hooks/useModalPortal";
 
 interface TaskDeleteModalProps {
   isOpen: boolean;
@@ -18,7 +20,7 @@ export function TaskDeleteModal({
   onConfirm,
   onCancel,
 }: TaskDeleteModalProps) {
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -28,12 +30,16 @@ export function TaskDeleteModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
+            style={{ zIndex: Z_INDEX.MODAL_BACKDROP }}
             onClick={onCancel}
           />
 
           {/* Modal Container with Centering */}
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-hidden pointer-events-none">
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none"
+            style={{ zIndex: Z_INDEX.MODAL_CONTENT }}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -121,4 +127,6 @@ export function TaskDeleteModal({
       )}
     </AnimatePresence>
   );
+
+  return useModalPortal(modalContent);
 }

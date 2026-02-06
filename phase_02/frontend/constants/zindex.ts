@@ -1,0 +1,9 @@
+export const Z_INDEX = {
+  BASE: 0,
+  CONTENT: 10,
+  MOBILE_BACKDROP: 30,
+  SIDEBAR: 40,
+  TOGGLE: 45,
+  MODAL_BACKDROP: 50,
+  MODAL_CONTENT: 60,
+} as const;

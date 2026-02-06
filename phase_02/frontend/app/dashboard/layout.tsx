@@ -7,30 +7,14 @@ import { Menu, X } from "lucide-react";
 import { authClient } from "../../lib/auth-client";
 import { Sidebar } from "../../components/layout/sidebar";
 import { Toaster } from "../../components/ui/toast";
+import { Z_INDEX } from "../../constants/zindex";
+import { useSidebarMode } from "../../hooks/useSidebarMode";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [isPending, setIsPending] = useState(true);
-  const [sidebarMode, setSidebarMode] = useState<"full" | "slim" | "hidden">("full");
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect mobile and load sidebar state from localStorage on mount
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-
-    const savedState = localStorage.getItem("dashboardSidebarMode");
-    if (savedState !== null) {
-      setSidebarMode(JSON.parse(savedState));
-    }
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const { sidebarMode, isMobile, mounted, toggleSidebar } = useSidebarMode();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -53,22 +37,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     checkSession();
   }, [router]);
 
-  // Toggle sidebar modes and persist to localStorage
-  const toggleSidebar = () => {
-    let newMode: "full" | "slim" | "hidden";
-
-    if (isMobile) {
-      // Mobile: full → hidden → full
-      newMode = sidebarMode === "full" ? "hidden" : "full";
-    } else {
-      // Desktop: full → slim → full
-      newMode = sidebarMode === "full" ? "slim" : "full";
-    }
-
-    setSidebarMode(newMode);
-    localStorage.setItem("dashboardSidebarMode", JSON.stringify(newMode));
-  };
-
   if (isPending) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
@@ -86,7 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!session?.session) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0a0f] relative">
       {/* Background Gradients */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-pink-red/10 rounded-full blur-[150px]" />
@@ -100,7 +68,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         className="fixed top-3 right-3 md:top-4 md:left-3 z-[45] p-2 rounded-md bg-black/40 backdrop-blur-sm border border-white/20 text-white/80 hover:text-white hover:bg-black/60 transition-all"
         aria-label="Toggle sidebar"
       >
-        {sidebarMode === "full" ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
+        {sidebarMode === "full" ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </motion.button>
 
       {/* Sidebar (responsive with full/slim/hidden modes) */}
@@ -114,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="fixed md:relative z-40"
           >
-            <Sidebar isSlim={sidebarMode === "slim"} />
+            <Sidebar isSlim={sidebarMode === "slim"} isMobile={isMobile} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -136,12 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content (adjusts for sidebar state) */}
       <motion.div
         animate={{
-          marginLeft:
-            sidebarMode === "hidden"
-              ? 0
-              : sidebarMode === "slim"
-                ? 80
-                : 256,
+          marginLeft: isMobile ? 0 : (sidebarMode === "hidden" ? 0 : (sidebarMode === "slim" ? 80 : 256))
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className={`min-h-screen p-8 relative z-10 ${!isMobile && sidebarMode !== "hidden" ? "md:block" : ""} pt-16 md:pt-8`}

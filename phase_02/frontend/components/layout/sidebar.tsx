@@ -16,10 +16,13 @@ const navigation = [
 ];
 
 interface SidebarProps {
+  /** Controls whether sidebar shows in slim/compact mode (icons only) */
   isSlim?: boolean;
+  /** Indicates if the viewport is mobile size (< 768px) */
+  isMobile?: boolean;
 }
 
-export function Sidebar({ isSlim = false }: SidebarProps) {
+export function Sidebar({ isSlim = false, isMobile = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useAuth();
@@ -37,12 +40,9 @@ export function Sidebar({ isSlim = false }: SidebarProps) {
 
   return (
     <motion.div
-      initial={{ x: -256, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className={`fixed left-0 top-0 h-screen glassmorphic-3d border-r border-white/10 flex flex-col transition-all duration-300 ${
-        isSlim ? "w-20" : "w-64"
-      }`}
+      animate={{ width: isSlim ? 80 : 256 }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+      className="fixed left-0 top-0 h-screen z-[40] glassmorphic-3d border-r border-white/10 flex flex-col"
     >
       {/* Logo */}
       <div className={`border-b border-white/10 flex items-center justify-center ${isSlim ? "p-4" : "p-6"}`}>
