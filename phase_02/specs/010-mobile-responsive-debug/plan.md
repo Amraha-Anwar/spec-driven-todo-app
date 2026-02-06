@@ -244,6 +244,94 @@ Page loads
 
 ---
 
+## Phase 1.5: Architectural Refinements (Updated Strategy)
+
+### Z-Index Audit & Explicit Layering
+
+**Goal**: Eliminate component overlap and create clear z-index hierarchy.
+
+| Layer | Component | Z-Index | Context | Purpose |
+|-------|-----------|---------|---------|---------|
+| Base | Background gradients | N/A | Fixed, pointer-events-none | Visual backdrop |
+| 10 | Main content | z-10 | Relative | Normal content flow |
+| 20 | Tooltips, dropdowns | z-20 | Absolute/Fixed | Minor overlays |
+| 30 | Mobile backdrop | z-30 | Fixed | Sidebar overlay backdrop |
+| 40 | Sidebar (full/slim) | z-40 | Relative (desktop) / Fixed (mobile) | Navigation sidebar |
+| 45 | Toggle button | z-45 | Fixed | Sidebar toggle control |
+| 50 | Modal backdrop | z-50 | Fixed | Overlay darkening |
+| 60 | Modal content | z-60 | Fixed | Delete confirmation dialog |
+
+**Implementation**:
+- Sidebar: `z-40` when `relative` (desktop), `z-40` when `fixed` (mobile)
+- Toggle button: `z-45` always (above sidebar, below modal)
+- Modal backdrop: `z-50`
+- Modal content: `z-60` with proper centering
+- Content area: Default `z-10` context, no competing z-indexes
+
+### Portal Pattern for Modals
+
+**Goal**: Break modals out of parent overflow-hidden containers.
+
+**Strategy**:
+1. Create `hooks/useModalPortal.ts` - wraps React.createPortal with DOM target detection
+2. Detect if modal parent has `overflow: hidden` - if true, mount to document.body via portal
+3. Modal component accepts optional `container` prop for portal target
+4. Falls back to inline rendering if portal unavailable (error handling)
+
+**Benefits**:
+- Modal never constrained by parent overflow rules
+- Prevents modal cutoff at viewport edges
+- Maintains modal accessibility (focus management)
+- Works with existing Framer Motion animations
+
+### Sidebar Component Refactor
+
+**Current Issues**:
+- Sidebar always `fixed left-0 top-0` conflicts with desktop relative positioning
+- Width transitions don't push content (margin doesn't apply to fixed elements)
+- Mobile/desktop behavior not clearly separated
+
+**New Architecture**:
+```
+Desktop (≥768px):
+  ├─ Sidebar: relative, w-64 (full) or w-20 (slim)
+  ├─ Content: adjusts margin-left via motion.div
+  └─ Toggle button: fixed top-left for accessibility
+
+Mobile (<768px):
+  ├─ Sidebar: fixed left-0 top-0, slides in/out
+  ├─ Backdrop: z-30, click to close
+  ├─ Content: full-width (no margin adjustment)
+  └─ Toggle button: fixed top-right
+```
+
+**Implementation Details**:
+- Create `useSidebarMode()` hook: manages state, mobile detection, localStorage
+- Sidebar component: accepts `isSlim` and `isMobile` props
+- Dashboard layout: renders sidebar as `relative` on desktop, `fixed` on mobile
+- Motion.div wrapper applies conditional animation + positioning
+
+### Framer Motion Transitions (AnimatePresence)
+
+**Current Problem**: Direct state changes cause layout shifts.
+
+**Solution**:
+1. Wrap sidebar in `<AnimatePresence mode="wait">`
+2. Use `key={sidebarMode}` to trigger exit/enter animations
+3. Define:
+   - Exit: `x: -256, opacity: 0` (slide left, fade)
+   - Enter: `x: 0, opacity: 1` (slide in, fade)
+   - Duration: 300ms, ease: "easeInOut"
+4. Modal: use AnimatePresence for smooth show/hide
+
+**Benefits**:
+- Smooth visual feedback
+- No jarring layout jumps
+- Professional feel
+- Consistent animation across interactions
+
+---
+
 ## Phase 2: Implementation Strategy
 
 ### 2.1 Phased Rollout (Dependency Order)
