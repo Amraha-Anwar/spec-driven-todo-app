@@ -6,7 +6,7 @@ import os
 import json
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import Session, select
 
 from ..models.conversation import Conversation
@@ -67,7 +67,6 @@ class ChatService:
         2. Retrieve last 10 messages from database
         3. Call OpenRouter agent with MCP tool binding
         4. Persist user and assistant messages to DB
-        5. Return ChatResponse with full message history
         """
         # 1. Ensure conversation exists
         conversation = await self._get_or_create_conversation(
@@ -77,7 +76,7 @@ class ChatService:
         )
 
         # 2. Persist user message to database
-        user_message = await self._save_message(
+        await self._save_message(
             conversation_id=conversation.id,
             role="user",
             content=request.message
@@ -101,21 +100,27 @@ class ChatService:
                 user_id=user_id,
                 model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4-turbo")
             )
+            
+            # FIXED: Safe attribute access for agent response
+            assistant_content = getattr(agent_response, 'content', None)
+            if assistant_content is None and isinstance(agent_response, dict):
+                assistant_content = agent_response.get('content', "I'm sorry, I couldn't process that.")
+            
+            tool_calls = getattr(agent_response, 'tool_calls', [])
+            if not tool_calls and isinstance(agent_response, dict):
+                tool_calls = agent_response.get('tool_calls', [])
+
         except Exception as e:
-            # Graceful fallback on LLM failure
+            print(f"Agent error: {str(e)}")
             assistant_content = f"I encountered an error processing your request: {str(e)}"
             tool_calls = []
-            agent_response = type('obj', (object,), {
-                'content': assistant_content,
-                'tool_calls': tool_calls
-            })()
 
         # 6. Persist assistant response with tool metadata
-        assistant_message = await self._save_message(
+        await self._save_message(
             conversation_id=conversation.id,
             role="assistant",
-            content=agent_response.content,
-            tool_call_metadata=self._serialize_tool_calls(agent_response.tool_calls) if agent_response.tool_calls else None
+            content=assistant_content,
+            tool_call_metadata=self._serialize_tool_calls(tool_calls) if tool_calls else None
         )
 
         # 7. Fetch complete message history for response
@@ -133,8 +138,8 @@ class ChatService:
         # 8. Return response
         return ChatResponse(
             conversation_id=conversation.id,
-            assistant_message=agent_response.content,
-            tool_calls=agent_response.tool_calls or [],
+            assistant_message=assistant_content,
+            tool_calls=tool_calls or [],
             messages=messages_response
         )
 
@@ -144,9 +149,7 @@ class ChatService:
         conversation_id: Optional[UUID],
         language_hint: str
     ) -> Conversation:
-        """Get existing conversation or create new one"""
         if conversation_id:
-            # Verify conversation ownership
             statement = select(Conversation).where(
                 (Conversation.id == conversation_id) &
                 (Conversation.user_id == user_id)
@@ -156,11 +159,11 @@ class ChatService:
                 raise PermissionError("Conversation not found or access denied")
             return conversation
 
-        # Create new conversation
+        # FIXED: Using context_data instead of reserved 'metadata'
         conversation = Conversation(
             user_id=user_id,
             language_preference=language_hint,
-            metadata={"created_via": "chat_api"}
+            context_data={"created_via": "chat_api"}
         )
         self.session.add(conversation)
         self.session.commit()
@@ -174,7 +177,6 @@ class ChatService:
         content: str,
         tool_call_metadata: Optional[Dict[str, Any]] = None
     ) -> Message:
-        """Persist message to database"""
         message = Message(
             conversation_id=conversation_id,
             role=role,
@@ -191,39 +193,25 @@ class ChatService:
         conversation_id: UUID,
         limit: int = 10
     ) -> List[Message]:
-        """Fetch last N messages in chronological order (stateless)"""
         statement = select(Message).where(
             Message.conversation_id == conversation_id
-        ).order_by(Message.created_at).limit(limit)
+        ).order_by(Message.created_at.desc()).limit(limit)
 
         messages = self.session.exec(statement).all()
-        return messages
+        # Return in chronological order
+        return sorted(messages, key=lambda x: x.created_at)
 
     def _build_system_prompt(self, language: str) -> str:
-        """Build system prompt based on language preference"""
         if language == "ur":
             return """Aap ek helpful task management assistant ho.
-
-Aap users ke tasks ko manage karne me help karte ho. Aap:
-- Tasks add, edit, delete, aur complete kar sakte ho
-- Task history dekh sakte ho
-- Natural language me instructions samajhte ho
-- Roman Urdu aur English dono samajhte ho
-
-Hamesha clear aur helpful responses dein."""
+Aap users ke tasks ko manage karne me help karte ho.
+Roman Urdu aur English dono samajhte ho."""
 
         return """You are a helpful task management assistant.
-
-You help users manage their tasks. You can:
-- Add, edit, delete, and complete tasks
-- View task history
-- Understand natural language instructions
-- Respond in clear, concise language
-
-Always be helpful and friendly."""
+You help users manage their tasks.
+Respond in clear, concise language."""
 
     def _format_for_llm(self, messages: List[Message]) -> List[Dict[str, str]]:
-        """Convert Message objects to LLM-compatible format"""
         return [
             {
                 "role": msg.role,
@@ -232,9 +220,18 @@ Always be helpful and friendly."""
             for msg in messages
         ]
 
-    def _serialize_tool_calls(self, tool_calls: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Serialize tool calls for JSON storage"""
+    def _serialize_tool_calls(self, tool_calls: List[Any]) -> Dict[str, Any]:
+        # Handle both list of dicts and list of objects
+        serialized = []
+        for tc in tool_calls:
+            if hasattr(tc, 'dict'):
+                serialized.append(tc.dict())
+            elif isinstance(tc, dict):
+                serialized.append(tc)
+            else:
+                serialized.append(str(tc))
+                
         return {
-            "calls": tool_calls,
-            "timestamp": datetime.utcnow().isoformat()
+            "calls": serialized,
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
