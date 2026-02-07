@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter, Montserrat, Poppins } from "next/font/google";
 import { Toaster } from "../components/ui/toast";
+import { ChatWidget } from "../components/chat/ChatWidget";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const montserrat = Montserrat({
@@ -29,6 +30,7 @@ export default function RootLayout({
     <html lang="en" className={`dark ${inter.variable} ${montserrat.variable} ${poppins.variable}`}>
       <body className={inter.className}>
         {children}
+        <ChatWidget />
         <Toaster />
       </body>
     </html>
