@@ -71,7 +71,7 @@ export function ChatWidget() {
 
       // Send to backend
       const response = await fetch(
-        `/api/${session.user.id}/chat`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/${session.user.id}/chat`,
         {
           method: "POST",
           headers: {
@@ -139,7 +139,7 @@ export function ChatWidget() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => router.push("/auth/signin")}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-[#865A5B] to-purple-600 shadow-lg z-40 flex items-center justify-center text-white hover:shadow-xl transition-shadow"
+        className="fixed bottom-2 right-2 sm:bottom-6 sm:right-6 w-14 h-14 rounded-full bg-gradient-to-br from-burgundy to-purple-600 shadow-lg z-40 flex items-center justify-center text-white hover:shadow-xl transition-shadow"
         aria-label="Open chat (sign in required)"
         title="Sign in to use chat"
         style={{ zIndex: Z_INDEX.CHAT_BUTTON }}
@@ -156,7 +156,7 @@ export function ChatWidget() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-[#865A5B] to-purple-600 shadow-lg flex items-center justify-center text-white hover:shadow-xl transition-shadow"
+        className="fixed bottom-2 right-2 sm:bottom-6 sm:right-6 w-14 h-14 rounded-full bg-gradient-to-br from-burgundy to-purple-600 shadow-lg flex items-center justify-center text-white hover:shadow-xl transition-shadow"
         aria-label="Toggle chat"
         style={{ zIndex: Z_INDEX.CHAT_BUTTON }}
       >
@@ -176,13 +176,13 @@ export function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 w-96 h-[600px] rounded-2xl border border-[#865A5B]/30 bg-black/40 backdrop-blur-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-2 right-2 w-[calc(100vw-1rem)] h-[80vh] sm:bottom-24 sm:right-6 sm:w-96 sm:h-[600px] rounded-2xl border border-burgundy/30 bg-black/40 backdrop-blur-2xl shadow-2xl flex flex-col overflow-hidden"
             style={{ zIndex: Z_INDEX.CHAT_PANEL }}
           >
             {/* Header */}
-            <div className="border-b border-[#865A5B]/20 p-4 flex items-center justify-between bg-black/20">
+            <div className="border-b border-burgundy/20 p-4 flex items-center justify-between bg-black/20">
               <div>
-                <h3 className="text-white font-semibold text-lg">Chat Assistant</h3>
+                <h3 className="text-white font-montserrat font-semibold text-lg">Chat Assistant</h3>
                 <p className="text-xs text-gray-400">Manage tasks with AI</p>
               </div>
               <button
@@ -195,12 +195,12 @@ export function ChatWidget() {
             </div>
 
             {/* Language Toggle */}
-            <div className="px-4 pt-3 pb-2 flex gap-2 border-b border-[#865A5B]/10">
+            <div className="px-4 pt-3 pb-2 flex gap-2 border-b border-burgundy/10">
               <button
                 onClick={() => setLanguage("en")}
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${
                   language === "en"
-                    ? "bg-[#865A5B] text-white"
+                    ? "bg-burgundy text-white"
                     : "bg-white/5 text-gray-400 hover:bg-white/10"
                 }`}
               >
@@ -210,7 +210,7 @@ export function ChatWidget() {
                 onClick={() => setLanguage("ur")}
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${
                   language === "ur"
-                    ? "bg-[#865A5B] text-white"
+                    ? "bg-burgundy text-white"
                     : "bg-white/5 text-gray-400 hover:bg-white/10"
                 }`}
               >
@@ -230,8 +230,8 @@ export function ChatWidget() {
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center">
                   <div>
-                    <MessageCircle className="w-8 h-8 text-[#865A5B]/50 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm">
+                    <MessageCircle className="w-8 h-8 text-burgundy/50 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm font-poppins">
                       {language === "en"
                         ? "Start a conversation... try 'add a task to buy milk'"
                         : "Baat shuru kijiye... 'Mera milk add karo' likhen"}
@@ -250,9 +250,9 @@ export function ChatWidget() {
                     }`}
                   >
                     <div
-                      className={`px-4 py-2.5 rounded-lg max-w-xs text-sm leading-relaxed ${
+                      className={`px-4 py-2.5 rounded-lg max-w-xs text-sm leading-relaxed font-poppins ${
                         msg.role === "user"
-                          ? "bg-[#865A5B] text-white rounded-br-none"
+                          ? "bg-burgundy text-white rounded-br-none"
                           : "bg-white/10 text-gray-100 rounded-bl-none border border-white/10"
                       }`}
                     >
@@ -276,7 +276,7 @@ export function ChatWidget() {
             </div>
 
             {/* Input */}
-            <div className="border-t border-[#865A5B]/20 p-4 bg-black/20">
+            <div className="border-t border-burgundy/20 p-4 bg-black/20">
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <input
                   type="text"
@@ -287,16 +287,17 @@ export function ChatWidget() {
                       ? "Type a message..."
                       : "Likhen..."
                   }
-                  className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#865A5B]/50 focus:ring-1 focus:ring-[#865A5B]/30 transition-all"
+                  className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-burgundy/50 focus:ring-1 focus:ring-burgundy/30 transition-all font-poppins"
                   disabled={isLoading}
                   autoFocus
+                  style={{ fontSize: '16px' }}
                 />
                 <motion.button
                   whileHover={{ scale: isLoading ? 1 : 1.05 }}
                   whileTap={{ scale: isLoading ? 1 : 0.95 }}
                   type="submit"
                   disabled={isLoading || !inputValue.trim()}
-                  className="bg-[#865A5B] hover:bg-[#965A5B] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-3 py-2 transition-colors"
+                  className="bg-burgundy hover:bg-burgundy/90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-3 py-2 transition-colors"
                   aria-label="Send message"
                 >
                   <Send className="w-4 h-4" />
