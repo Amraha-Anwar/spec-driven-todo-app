@@ -15,13 +15,25 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware
+# ✅ Enhanced CORS configuration for Better Auth Redirection
+# "allow_credentials=True" requires explicit origins and specific headers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "https://plannior-ai.vercel.app"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT","PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Content-Type", 
+        "Authorization", 
+        "Set-Cookie", 
+        "Access-Control-Allow-Credentials",
+        "Access-Control-Allow-Origin"
+    ],
+    expose_headers=["Set-Cookie"] # Allow frontend to see cookie headers if needed
 )
 
 # Custom exception middleware
@@ -31,8 +43,6 @@ app.add_middleware(BaseHTTPMiddleware, dispatch=global_exception_middleware)
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(health_router, prefix="/api/health", tags=["health"])
 app.include_router(tasks_router, prefix="/api", tags=["tasks"])
-# app.include_router(verification_router, prefix="/api", tags=["verification"])  # ❌ REMOVE THIS
-
 
 @app.get("/")
 def read_root():

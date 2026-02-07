@@ -14,7 +14,7 @@ router = APIRouter()
 def create_task(user_id: str, task: TaskCreate, current_user = Depends(get_current_user), session: Session = Depends(get_session)):
     """Create a new task for a user - only allowed if user_id matches authenticated user"""
     # Verify that the user_id in the path matches the authenticated user
-    if current_user.id != user_id:
+    if current_user["id"] != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to create tasks for this user"
@@ -33,7 +33,7 @@ def create_task(user_id: str, task: TaskCreate, current_user = Depends(get_curre
 def get_user_tasks(user_id: str, current_user = Depends(get_current_user), session: Session = Depends(get_session)):
     """Get all tasks for a user - only allowed if user_id matches authenticated user"""
     # Verify that the user_id in the path matches the authenticated user
-    if current_user.id != user_id:
+    if current_user["id"] != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view tasks for this user"
@@ -44,10 +44,10 @@ def get_user_tasks(user_id: str, current_user = Depends(get_current_user), sessi
     return tasks
 
 @router.get("/{user_id}/tasks/{task_id}", response_model=TaskResponse)
-def get_task(user_id: str, task_id: UUID, current_user = Depends(get_current_user), session: Session = Depends(get_session)):
+def get_task(user_id: str, task_id: str, current_user = Depends(get_current_user), session: Session = Depends(get_session)):
     """Get a specific task - only allowed if user_id matches authenticated user"""
     # Verify that the user_id in the path matches the authenticated user
-    if current_user.id != user_id:
+    if current_user["id"] != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view this task"
@@ -60,10 +60,10 @@ def get_task(user_id: str, task_id: UUID, current_user = Depends(get_current_use
     return task
 
 @router.patch("/{user_id}/tasks/{task_id}", response_model=TaskResponse)
-def update_task(user_id: str, task_id: UUID, task_update: TaskUpdate, current_user = Depends(get_current_user), session: Session = Depends(get_session)):
+def update_task(user_id: str, task_id: str, task_update: TaskUpdate, current_user = Depends(get_current_user), session: Session = Depends(get_session)):
     """Update a task - only allowed if user_id matches authenticated user"""
     # Verify that the user_id in the path matches the authenticated user
-    if current_user.id != user_id:
+    if current_user["id"] != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this task"
@@ -85,10 +85,10 @@ def update_task(user_id: str, task_id: UUID, task_update: TaskUpdate, current_us
     return db_task
 
 @router.delete("/{user_id}/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(user_id: str, task_id: UUID, current_user = Depends(get_current_user), session: Session = Depends(get_session)):
+def delete_task(user_id: str, task_id: str, current_user = Depends(get_current_user), session: Session = Depends(get_session)):
     """Delete a task - only allowed if user_id matches authenticated user"""
     # Verify that the user_id in the path matches the authenticated user
-    if current_user.id != user_id:
+    if current_user["id"] != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this task"
