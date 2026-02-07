@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import { authClient } from '../lib/auth-client';
 import { MobileNav } from '../components/layout/mobile-nav';
 import { DesktopNav } from '../components/layout/desktop-nav';
+import { ChatWidget } from '../components/chat/ChatWidget';
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
@@ -150,6 +151,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Chat Widget */}
+      <ChatWidget />
     </div>
   );
 }

@@ -20,10 +20,13 @@ class Conversation(SQLModel, table=True):
     user_id: str = Field(foreign_key="user.id", index=True)
     title: Optional[str] = Field(default=None)
     language_preference: str = Field(default="en")  # "en" for English, "ur" for Roman Urdu
-    metadata: Optional[Dict[str, Any]] = Field(
+    
+    # Renamed from 'metadata' to 'context_data' to avoid reserved keyword conflict
+    context_data: Optional[Dict[str, Any]] = Field(
         default=None,
         sa_column=Column(JSON)  # Critical: prevents ValueError on dict initialization
     )
+    
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

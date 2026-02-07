@@ -44,7 +44,7 @@ def reset_database():
         print("   - account")
         print("   - session")
         print("   - verification")
-        print("   - conversation (for chatbot - UUID PK, user_id FK, language_preference, metadata JSON)")
+        print("   - conversation (for chatbot - UUID PK, user_id FK, language_preference, context_data JSON)")
         print("   - message (for chatbot - UUID PK, conversation_id FK, role, content, tool_call_metadata JSON)")
         
     except Exception as e:
