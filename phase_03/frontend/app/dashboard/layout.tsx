@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { authClient } from "../../lib/auth-client";
 import { Sidebar } from "../../components/layout/sidebar";
+import { ChatWidget } from "../../components/chat/ChatWidget";
 import { Toaster } from "../../components/ui/toast";
 import { useSidebarMode } from "../../hooks/useSidebarMode";
 
@@ -116,6 +117,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </div>
       </motion.div>
+
+      {/* Chat Widget - Floating fixed component (persists across all dashboard pages) */}
+      <ChatWidget />
 
       {/* Toast Notifications */}
       <Toaster />
