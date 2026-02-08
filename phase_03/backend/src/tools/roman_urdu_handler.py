@@ -255,15 +255,21 @@ Examples:
 
     @staticmethod
     def get_tools_schema() -> Dict[str, Any]:
-        """Returns MCP tool definition for RomanUrduHandler"""
+        """
+        Returns MCP tool definition for RomanUrduHandler.
+        **FIX**: Updated to use 'parameters' instead of 'inputSchema' for OpenAI compatibility.
+        """
         return {
-            "name": "parse_urdu_intent",
-            "description": "Parse Roman Urdu (Urdu in Latin characters) task commands to structured operations",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "user_input": {"type": "string", "description": "Roman Urdu command (e.g., 'Mera task add kardo: buy milk')"}
-                },
-                "required": ["user_input"]
+            "type": "function",
+            "function": {
+                "name": "parse_urdu_intent",
+                "description": "Parse Roman Urdu (Urdu in Latin characters) task commands to structured operations",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_input": {"type": "string", "description": "Roman Urdu command (e.g., 'Mera task add kardo: buy milk')"}
+                    },
+                    "required": ["user_input"]
+                }
             }
         }

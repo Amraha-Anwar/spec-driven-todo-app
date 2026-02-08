@@ -44,6 +44,50 @@ export function ChatWidget() {
     checkAuth();
   }, []);
 
+  // **T034 FIX**: Fetch chat history on mount for re-hydration
+  // Retrieve conversation_id from localStorage and fetch existing messages from backend
+  useEffect(() => {
+    const restoreChatHistory = async () => {
+      if (!session?.user) return;
+
+      try {
+        // Get conversation_id from localStorage if it exists
+        const savedConversationId = localStorage.getItem(`conversation_${session.user.id}`);
+        if (savedConversationId) {
+          setConversationId(savedConversationId);
+
+          // Fetch existing messages from backend (GET /api/{user_id}/chat/messages)
+          const token = session.session?.token || session.session?.accessToken || "";
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/${session.user.id}/chat/messages?conversation_id=${savedConversationId}`,
+            {
+              headers: {
+                "Authorization": `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            // Sync UI state with database history
+            if (data.messages && Array.isArray(data.messages)) {
+              setMessages(data.messages.map((msg: any) => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+              })));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to restore chat history:", err);
+        // Continue silently - user can still chat
+      }
+    };
+
+    restoreChatHistory();
+  }, [session?.user]);
+
   // 2. Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -99,9 +143,10 @@ export function ChatWidget() {
 
       const data = await response.json();
 
-      // Store conversation ID on first response
+      // Store conversation ID on first response (T034: Save to localStorage for re-hydration)
       if (!conversationId && data.conversation_id) {
         setConversationId(data.conversation_id);
+        localStorage.setItem(`conversation_${session.user.id}`, data.conversation_id);
       }
 
       // Add assistant message
