@@ -163,17 +163,28 @@ class ChatService:
 
             # **T051 FIX**: Execution guard - detect missing tool calls and retry once with forced instruction
             tool_calls = agent_response.get('tool_calls', [])
-            if not tool_calls or len(tool_calls) == 0:
-                # Detect expected tool based on user intent
-                expected_tool = self._intent_detector(request.message)
+            expected_tool = self._intent_detector(request.message)  # Always detect expected tool
 
+            # Check if tool_calls is empty OR if expected tool was NOT called (wrong tool called instead)
+            tool_missing = len(tool_calls) == 0
+            wrong_tool_called = False
+
+            if expected_tool and not tool_missing:
+                # Check if the expected tool was actually called
+                called_tools = [tc.get('name') for tc in tool_calls]
+                wrong_tool_called = expected_tool not in called_tools
+                if wrong_tool_called:
+                    print(f"DEBUG: Expected tool '{expected_tool}' but got {called_tools}. Will retry with hardening.")
+
+            if tool_missing or wrong_tool_called:
+                # Trigger retry if: no tools called OR wrong tool was called
                 if expected_tool:
                     print(f"DEBUG: Execution guard detected missing tool '{expected_tool}' for message: {request.message[:50]}")
-                    print(f"DEBUG: Retrying agent with firm but clear instruction...")
+                    print(f"DEBUG: Retrying agent with hardened tool binding and firm instruction...")
 
-                    # Retry with softened but firm instruction (removes aggression that freezes model)
+                    # Retry with hardened tool binding (force specific tool) and firm instruction
                     action_word = self._action_from_tool(expected_tool)
-                    forced_instruction = f"\n\nIMPORTANT: The user wants to {action_word}. Please use the '{expected_tool}' tool to complete this request. This is required."
+                    forced_instruction = f"\n\nIMPORTANT: The user wants to {action_word}. You MUST use the '{expected_tool}' tool to complete this request. This is REQUIRED and NON-NEGOTIABLE."
                     retry_system_prompt = system_prompt + forced_instruction
 
                     agent_response = await self.agent_runner.run_agent(
@@ -183,7 +194,8 @@ class ChatService:
                         tools=task_toolbox.get_tools_schema(),
                         model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4-turbo"),
                         language_hint=request.language_hint,
-                        actual_tasks=actual_tasks
+                        actual_tasks=actual_tasks,
+                        force_tool_name=expected_tool  # **HARDENED BINDING**: Force specific tool during retry
                     )
 
                     # Check if retry succeeded
@@ -383,7 +395,10 @@ class ChatService:
             task_list_str = "\n**NO TASKS FOUND**: The user currently has no tasks in their database.\n"
 
         if language == "ur":
-            return f"""**T053 FIX - AGENTIC AI MANDATE**:
+            return f"""**STRICT MODE - TASK MANAGER LOCKED DOWN**:
+Aap ek TASK MANAGER ho. Aap list, delete, ya update requests sirf text se jawab dene se FORBIDDEN ho. Aap ZAROOR tool call karenga pehle.
+
+**T053 FIX - AGENTIC AI MANDATE**:
 Aap ek Agentic AI task management assistant ho.
 Aap SIRF tools ke through action perform kar sakte ho.
 AGAR aap tool call nahi karte, to aap FAIL ho gaye ho.
@@ -423,7 +438,10 @@ Aaj ki exact date: February 8, 2026 hai.
 KABHI BHI 2024, 2025, ya kisi bhi past date use mat karo.
 Sab dates 2026 mein hone chahiye."""
 
-        return f"""**T053 FIX - AGENTIC AI MANDATE**:
+        return f"""**STRICT MODE - TASK MANAGER LOCKED DOWN**:
+You are a TASK MANAGER. You are FORBIDDEN from answering any request to list, delete, or update tasks with text alone. You MUST call the corresponding tool first.
+
+**T053 FIX - AGENTIC AI MANDATE**:
 You are an Agentic AI assistant.
 You CANNOT perform actions without calling tools.
 If you don't call a tool, you have FAILED.

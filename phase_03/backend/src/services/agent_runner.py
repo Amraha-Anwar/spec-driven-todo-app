@@ -12,9 +12,10 @@ from openai import OpenAI
 class AgentRunner:
     """Orchestrates OpenAI SDK configured to use OpenRouter as base_url"""
 
-    # OpenRouter Auto-Free Router with stable fallback
-    PRIMARY_MODEL = "openrouter/auto"  # OpenRouter's intelligent free tier router
-    FALLBACK_MODEL = "mistralai/mistral-7b-instruct:free"  # Most historically stable
+    # OpenRouter model configuration - 3-tier fallback strategy (all verified available models)
+    PRIMARY_MODEL = "openrouter/auto"  # Will be overridden by OPENROUTER_MODEL from .env
+    FALLBACK_MODEL = "arcee-ai/trinity-mini:free"  # First fallback - 26B sparse MoE with agentic support
+    FINAL_FALLBACK_MODEL = "nvidia/nemotron-3-nano-30b-a3b:free"  # Final fallback - explicitly for agentic AI
 
     def __init__(self, api_key: Optional[str] = None, base_url: str = "https://openrouter.ai/api/v1"):
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
@@ -42,7 +43,8 @@ class AgentRunner:
         max_tokens: int = 500,
         tool_results: Optional[List[Dict[str, Any]]] = None,
         language_hint: str = "en",
-        actual_tasks: Optional[List[Dict[str, Any]]] = None  # **MANDATORY FIX #1**: Actual tasks from DB
+        actual_tasks: Optional[List[Dict[str, Any]]] = None,  # **MANDATORY FIX #1**: Actual tasks from DB
+        force_tool_name: Optional[str] = None  # **NEW**: Force specific tool execution during retry
     ) -> Dict[str, Any]:
         """Execute agent call to OpenRouter with tool binding support and response synthesis.
 
@@ -105,7 +107,18 @@ class AgentRunner:
             # **SCHEMA FIX**: Only set tool_choice='auto' if tools list is not empty
             if tools and len(tools) > 0:
                 api_params["tools"] = tools
-                api_params["tool_choice"] = "auto"  # Force LLM to use tools when available
+
+                # If force_tool_name is specified (during execution guard retry), use hardcoded tool_choice
+                if force_tool_name:
+                    # **HARDENED BINDING**: Force specific tool during retry by name
+                    api_params["tool_choice"] = {
+                        "type": "function",
+                        "function": {"name": force_tool_name}
+                    }
+                    print(f"DEBUG: Hardened tool binding - forcing tool '{force_tool_name}'")
+                else:
+                    # Normal case: allow model to choose any available tool
+                    api_params["tool_choice"] = "auto"  # Force LLM to use tools when available
             else:
                 # If no tools provided, don't set tool_choice (avoid 400 error)
                 pass
@@ -133,6 +146,19 @@ class AgentRunner:
                     "error": error_msg,
                     "success": False
                 }
+
+            # **PAYLOAD CLEANUP**: Ensure no conflicting instructions
+            # When forcing a tool via tool_choice, validate messages don't have conflicting directives
+            if "tool_choice" in api_params and isinstance(api_params.get("tool_choice"), dict):
+                # Hardened tool forcing is active - ensure system prompt is clean
+                print(f"DEBUG: Payload cleanup - hardened tool binding active, validating payload consistency")
+                # The system prompt is already validated above (line 430+ in chat_service.py)
+                # Just ensure tool_choice format is valid
+                if not isinstance(api_params["tool_choice"], dict) or \
+                   not api_params["tool_choice"].get("type") == "function" or \
+                   not api_params["tool_choice"].get("function", {}).get("name"):
+                    print(f"WARNING: tool_choice format invalid, falling back to 'auto'")
+                    api_params["tool_choice"] = "auto"
 
             response = self.client.chat.completions.create(**api_params)
             print(f"DEBUG: Using model {model_to_use} (success)")
@@ -202,7 +228,41 @@ class AgentRunner:
                 except Exception as fallback_error:
                     print(f"DEBUG: Fallback model {model_to_use} also failed: {str(fallback_error)[:100]}")
                     self.model_routing_log.append({"model": model_to_use, "status": "failed", "error": str(fallback_error)[:100]})
-                    error_msg = f"All model attempts failed. Tried: {attempted_models}. Error: {str(fallback_error)[:200]}"
+
+                    # Attempt 3: Try final fallback model to guarantee user gets a response
+                    print(f"DEBUG: Attempting final fallback model: {self.FINAL_FALLBACK_MODEL}")
+                    final_fallback_model = self.FINAL_FALLBACK_MODEL
+                    attempted_models.append(final_fallback_model)
+
+                    try:
+                        api_params["model"] = final_fallback_model
+                        response = self.client.chat.completions.create(**api_params)
+                        print(f"DEBUG: Using final fallback model {final_fallback_model} (success)")
+                        self.model_routing_log.append({"model": final_fallback_model, "status": "success (final fallback)"})
+
+                        # Successfully got response with final fallback model
+                        content = response.choices[0].message.content or ""
+                        tool_calls = []
+                        if hasattr(response.choices[0].message, 'tool_calls') and response.choices[0].message.tool_calls:
+                            tool_calls = [
+                                {
+                                    "name": tc.function.name,
+                                    "arguments": json.loads(tc.function.arguments)
+                                }
+                                for tc in response.choices[0].message.tool_calls
+                            ]
+                        return {
+                            "content": content,
+                            "tool_calls": tool_calls,
+                            "model": response.model,
+                            "usage": {
+                                "total_tokens": response.usage.total_tokens
+                            }
+                        }
+                    except Exception as final_error:
+                        print(f"DEBUG: Final fallback model {final_fallback_model} also failed: {str(final_error)[:100]}")
+                        self.model_routing_log.append({"model": final_fallback_model, "status": "failed", "error": str(final_error)[:100]})
+                        error_msg = f"All model attempts failed. Tried: {attempted_models}. Error: {str(final_error)[:200]}"
 
             # Check for the 402 credit error specifically
             elif "402" in error_msg:
