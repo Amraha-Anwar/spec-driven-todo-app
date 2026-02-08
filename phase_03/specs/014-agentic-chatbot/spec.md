@@ -38,49 +38,72 @@ User opens the chat interface and types a task creation command in English (e.g.
 
 ### User Story 2 - Task Completion via Chat (Priority: P1)
 
-User types a completion command (e.g., "Mark buy groceries as done" or "Mera completed task: buy groceries") and the chat interface updates the task status in the database, immediately reflects the change in the Task List, and provides confirmation.
+User types a completion command (e.g., "Mark buy groceries as done", "Complete the bread task", or "Bread wala task complete kardo") and the chat interface updates the task status in the database, immediately reflects the change in the Task List, and provides a warm confirmation with encouragement.
 
-**Why this priority**: Core feature that validates MCP tool execution for update operations and demonstrates real-time synchronization.
+**Why this priority**: Core feature that validates MCP tool execution for update operations, demonstrates real-time synchronization, and tests ambiguous reference resolution (e.g., "Dusra wala done karo").
 
-**Independent Test**: Can be fully tested by marking a task complete via chat and verifying: (1) task status changes in database, (2) confirmation appears in chat, (3) Task List UI shows task as completed.
+**Independent Test**: Can be fully tested by marking a task complete via chat and verifying: (1) task status changes in database, (2) confirmation appears in chat with warm personality, (3) Task List UI shows task as completed, (4) ambiguous references are correctly resolved.
+
+**Key Features**:
+- Support explicit task references: "Mark buy groceries as done"
+- Support fuzzy/title-based references: "Complete the bread task"
+- Support ambiguous Urdu references: "Dusra wala done karo" (Complete the second one)
+- Proactive follow-ups after completion: "Nice work! Want to create another task?"
 
 **Acceptance Scenarios**:
 
-1. **Given** task "buy groceries" exists and is incomplete, **When** user types "Mark buy groceries as done", **Then** task status becomes "completed" in database
-2. **Given** user types in Roman Urdu "Mera task complete kardo: buy groceries", **When** message is submitted, **Then** task is marked complete and confirmation appears
+1. **Given** task "buy groceries" exists and is incomplete, **When** user types "Mark buy groceries as done", **Then** task status becomes "completed" in database and assistant confirms: "Done! Task marked as complete! ✅ Nice work! Want to create another task?"
+2. **Given** user types in Roman Urdu "Bread wala task complete kardo", **When** message is submitted, **Then** task with "bread" in title is marked complete and confirmation appears: "Perfect! Task complete mark ho gaya! 🎉"
 3. **Given** task ID is invalid or task doesn't exist, **When** user tries to mark it complete, **Then** assistant explains the issue and suggests existing tasks
+4. **Given** user has multiple tasks and types "Dusra wala done karo" (complete the second one), **When** submitted, **Then** assistant identifies the second task by creation order and marks it complete, confirming which task was completed
 
 ---
 
 ### User Story 3 - Task Deletion via Chat (Priority: P1)
 
-User types a deletion command (e.g., "Delete task: old project" or "Mera task delete kardo: old project") and the chat interface triggers an MCP tool to remove the task from the database, confirms the action, and the Task List updates instantly.
+User types a deletion command (e.g., "Delete task: old project", "Remove the third task", or "Task 3 delete karo") and the chat interface triggers an MCP tool to remove the task from the database, confirms the action with a warm acknowledgment, and the Task List updates instantly.
 
-**Why this priority**: Core CRUD feature completing the basic operations set; validates destructive operations safety.
+**Why this priority**: Core CRUD feature completing the basic operations set; validates destructive operations safety and ambiguous reference handling.
 
-**Independent Test**: Can be fully tested by deleting a task via chat and verifying: (1) task is removed from database, (2) confirmation appears in chat, (3) Task List no longer shows the task.
+**Independent Test**: Can be fully tested by deleting a task via chat and verifying: (1) task is removed from database, (2) confirmation appears in chat with personality, (3) Task List no longer shows the task, (4) ambiguous references correctly identify which task to delete.
+
+**Key Features**:
+- Support explicit task references: "Delete task: old project"
+- Support numeric/positional references: "Delete the third task" or "Task 3 delete karo"
+- Support fuzzy/title-based references: "Delete the old project"
+- Support ambiguous Urdu references: "Purana wala delete kardo" (Delete the old one)
+- Proactive confirmation before deletion of important tasks
 
 **Acceptance Scenarios**:
 
-1. **Given** task "old project" exists, **When** user types "Delete task: old project", **Then** task is removed from database and Task List
-2. **Given** user types in Roman Urdu "Mera task delete kardo: old project", **When** submitted, **Then** assistant confirms deletion in both languages
-3. **Given** user attempts to delete a non-existent task, **When** user submits command, **Then** assistant politely explains the task wasn't found
+1. **Given** task "old project" exists, **When** user types "Delete task: old project", **Then** task is removed from database and Task List, assistant confirms: "Perfect! Task delete ho gaya! ✅"
+2. **Given** user has 5 tasks and types "Task 3 delete karo", **When** submitted, **Then** task at position 3 is correctly deleted and assistant confirms which task was removed
+3. **Given** user types in Roman Urdu "Mera task delete kardo: old project", **When** submitted, **Then** assistant confirms deletion in Roman Urdu: "Bilkul! Task delete ho gaya! ✅ Agla task ke liye mujhe aage help deni hai?"
+4. **Given** user attempts to delete a non-existent task, **When** user submits command, **Then** assistant politely explains the task wasn't found and suggests existing tasks
 
 ---
 
 ### User Story 4 - Task Update via Chat (Priority: P2)
 
-User types an update command (e.g., "Update buy groceries: set priority to high" or "Mera task update kardo: change due date to tomorrow") and the chat interface triggers an MCP tool to update specific task fields, confirms the change, and the Task List reflects the update.
+User types an update command (e.g., "Update buy groceries: set priority to high", "Add description to bread task", or "Mera task update kardo: change due date to tomorrow") and the chat interface triggers an MCP tool to update specific task fields, confirms the change with specific details, and the Task List reflects the update.
 
-**Why this priority**: Important feature for task management workflow; extends basic CRUD with attribute modification.
+**Why this priority**: Important feature for task management workflow; extends basic CRUD with attribute modification and demonstrates the proactive personality asking for missing details when tasks are created.
 
-**Independent Test**: Can be fully tested by updating a task attribute via chat and verifying: (1) specific field changes in database, (2) confirmation appears in chat, (3) Task List shows updated information.
+**Independent Test**: Can be fully tested by updating a task attribute via chat and verifying: (1) specific field changes in database, (2) confirmation appears in chat with personality, (3) Task List shows updated information, (4) assistant proactively asks for additional details if not provided.
+
+**Key Features**:
+- Support updating priority: "Set priority to high"
+- Support updating due date: "Change due date to tomorrow"
+- Support adding description: "Add description: buy organic milk"
+- Support fuzzy reference resolution: "Update the bread task"
+- Proactive follow-ups: After task creation, ask if user wants to add priority/due date/description
 
 **Acceptance Scenarios**:
 
-1. **Given** task "buy groceries" exists, **When** user types "Update buy groceries: priority high", **Then** task priority field is updated in database
-2. **Given** user types in Roman Urdu "Mera task update kardo: change title", **When** new title is provided, **Then** task title changes in database and UI
-3. **Given** user provides invalid update syntax, **When** user submits, **Then** assistant asks for clarification with example format
+1. **Given** task "buy groceries" exists, **When** user types "Update buy groceries: priority high", **Then** task priority field is updated in database and assistant confirms: "Perfect! I've updated your task! ✅ Is there anything else you'd like to adjust?"
+2. **Given** user types in Roman Urdu "Mera task update kardo: change title", **When** new title is provided, **Then** task title changes in database and assistant confirms in Roman Urdu
+3. **Given** user creates a task without priority/due date, **When** task is created, **Then** assistant proactively asks: "Would you like to set a priority level (low/medium/high) or add a due date?" before asking for next action
+4. **Given** user provides invalid update syntax, **When** user submits, **Then** assistant asks for clarification with example format: "To update a task, try: 'Update [task name]: [field] [value]'"
 
 ---
 
@@ -140,21 +163,22 @@ User engages in multi-turn conversation where the assistant retrieves the last 1
 ### Functional Requirements
 
 - **FR-001**: Chat interface MUST accept user input in English and Roman Urdu
-- **FR-002**: System MUST execute ALL CRUD operations exclusively through the 'TaskToolbox' Skill (add, delete, update, view tasks in Neon database)
+- **FR-002**: System MUST execute ALL CRUD operations exclusively through the 'TaskToolbox' Skill (add, delete, update, view tasks in Neon database); `complete_task`, `delete_task`, and `update_task` tools MUST be fully implemented and bound with `tool_choice='auto'`
 - **FR-003**: System MUST use the 'RomanUrduHandler' Sub-Agent to parse Roman Urdu user intents and map them to TaskToolbox tool parameters
 - **FR-004**: System MUST invoke 'session.commit()' to Neon DB immediately after every successful MCP tool execution for persistent state management
 - **FR-005**: System MUST retrieve the last 10 messages from the 'Message' table before each LLM processing turn
 - **FR-006**: System MUST persist both user and assistant messages to the 'Message' table with timestamps
 - **FR-007**: System MUST re-hydrate conversation history in the UI from the 'Message' table on page refresh without data loss
-- **FR-008**: System MUST use the OpenAI Agents SDK for interpreting user intent and executing tasks via MCP sub-agents
-- **FR-009**: Assistant MUST provide a friendly confirmation message ONLY after a successful DB commit (not before)
+- **FR-008**: System MUST use the OpenAI Agents SDK for interpreting user intent and executing tasks via MCP sub-agents with two-turn response synthesis (first turn: execute tools, second turn: synthesize confirmations)
+- **FR-009**: Assistant MUST provide a warm, friendly confirmation message with personality ONLY after a successful DB commit (not before); confirmations MUST never be empty and MUST include proactive follow-ups asking about missing details (priority, due date, description)
 - **FR-010**: Tasks created or modified via chat MUST appear in the Task List UI without requiring a page refresh
-- **FR-011**: System MUST support task operations: create with optional title/description/priority/due date, mark complete, delete, update, and view
-- **FR-012**: System MUST handle Roman Urdu commands (e.g., "Mera task add kardo", "Mera task delete kardo") using RomanUrduHandler sub-agent for parsing and mapping to English operations
-- **FR-013**: System MUST maintain conversation context across multiple user turns in a single session
-- **FR-014**: System MUST gracefully handle invalid or ambiguous task references (including contextual Urdu references like "Purana wala delete kardo") with clarifying questions or auto-selection based on conversation history
+- **FR-011**: System MUST support task operations with proactive personality: create with optional title/description/priority/due date, mark complete, delete, update, and view; after task creation, MUST proactively ask for missing details
+- **FR-012**: System MUST handle Roman Urdu commands (e.g., "Mera task add kardo", "Mera task delete kardo", "Bread wala task complete kardo") using RomanUrduHandler sub-agent for parsing and mapping to English operations; responses MUST be in Roman Urdu when user input is in Roman Urdu
+- **FR-013**: System MUST maintain conversation context across multiple user turns in a single session with accurate ambiguous reference resolution
+- **FR-014**: System MUST gracefully handle ambiguous task references with two-tier resolution: (1) Direct match on task titles in conversation history (last 10 messages), (2) Contextual match on positional/temporal keywords ("first", "last", "second", "old", "new", "purana", "dusra"); if multiple matches found, ask user with list; if single match, auto-select and confirm which task was referenced
 - **FR-015**: User isolation MUST be enforced: user_a cannot access user_b's conversation history, tasks, or messages (validated at JWT, database, and MCP tool layers)
 - **FR-016**: System MUST use four specialized MCP-based sub-agents for maximum reusability: TaskToolbox (CRUD), ContextManager (history), RomanUrduHandler (language), ChatKit-Integrator (frontend bridge)
+- **FR-017**: System MUST ensure assistant_message in ChatResponseSchema is NEVER empty; fallback confirmations MUST be provided in both English and Roman Urdu based on user's language preference
 
 ### Key Entities
 
@@ -180,13 +204,23 @@ User engages in multi-turn conversation where the assistant retrieves the last 1
 - **SC-007**: User experiences no broken link between chat actions and Task List updates (100% consistency)
 - **SC-008**: System responds to user commands within 3 seconds including database round-trip
 - **SC-009**: All message persistence operations complete successfully with no orphaned or duplicate messages
-- **SC-010**: Roman Urdu language support covers core task operations (add, delete, complete, view)
+- **SC-010**: Roman Urdu language support covers core task operations (add, delete, complete, update, view)
 - **SC-011**: ALL task CRUD operations are executed exclusively through TaskToolbox Skill (zero direct database calls from agent)
 - **SC-012**: ALL Roman Urdu intent parsing routes through RomanUrduHandler Sub-Agent before tool invocation
 - **SC-013**: Confirmation messages appear in chat ONLY after successful session.commit() to Neon DB (no premature confirmations)
 - **SC-014**: Page refresh restores complete conversation history from 'Message' table with 100% fidelity
 - **SC-015**: Zero task or message data loss after browser refresh or session timeout
 - **SC-016**: All PHRs and specifications are stored within phase_03 directory hierarchy
+- **SC-017**: `complete_task` MCP tool MUST be fully implemented and automatically invoked when user requests task completion (e.g., "Mark task as done" or "Bread wala task complete kardo")
+- **SC-018**: `delete_task` MCP tool MUST be fully implemented and automatically invoked when user requests task deletion (e.g., "Delete task: old project" or "Task 3 delete karo")
+- **SC-019**: `update_task` MCP tool MUST be fully implemented and automatically invoked for task attribute updates (priority, due_date, description, status)
+- **SC-020**: Ambiguous task references MUST be resolved correctly with 95%+ accuracy (e.g., "Complete the first one" or "Dusra wala done karo")
+- **SC-021**: Assistant responses MUST NEVER be empty after tool execution; fallback confirmations with proactive follow-ups MUST be present
+- **SC-022**: After task creation, assistant MUST proactively ask about missing details (priority, due date, description) before asking for next action
+- **SC-023**: Confirmation messages MUST follow storyteller format with warm, friendly tone and emojis (🎉, ✅, 📝, etc.)
+- **SC-024**: When user input is in Roman Urdu, all confirmation messages MUST be in Roman Urdu (e.g., "Task complete ho gaya! 🎉" not "Task completed! 🎉")
+- **SC-025**: Database records MUST persist correctly when user says "Task 3 delete karo" - the correct record is removed from Neon DB
+- **SC-026**: Database records MUST persist correctly when user says "Bread wala task complete kardo" - the correct task's status is updated to 'completed' in Neon DB
 
 ## Clarifications (Session 2026-02-08)
 
