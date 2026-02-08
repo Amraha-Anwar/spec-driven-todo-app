@@ -9,7 +9,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
 
 from ..models.task import Task
 from ..models.user import User
@@ -86,7 +86,7 @@ class TaskToolbox:
             return {
                 "success": True,
                 "data": {
-                    "task_id": str(task.id),
+                    "id": str(task.id),
                     "title": task.title,
                     "status": task.status,
                     "priority": task.priority,
@@ -133,7 +133,7 @@ class TaskToolbox:
                 "success": True,
                 "data": [
                     {
-                        "task_id": str(task.id),
+                        "id": str(task.id),
                         "title": task.title,
                         "description": task.description,
                         "status": task.status,
@@ -166,7 +166,7 @@ class TaskToolbox:
         try:
             # Query with user isolation (prevents cross-user access)
             stmt = select(Task).where(
-                (Task.id == int(task_id)) &
+                (Task.id == UUID(task_id)) &
                 (Task.user_id == user_id)
             )
             task = self.session.exec(stmt).first()
@@ -183,7 +183,7 @@ class TaskToolbox:
             return {
                 "success": True,
                 "data": {
-                    "task_id": str(task.id),
+                    "id": str(task.id),
                     "title": task.title,
                     "status": task.status,
                     "completed_at": datetime.utcnow().isoformat()
@@ -204,40 +204,109 @@ class TaskToolbox:
         """
         Delete a task permanently.
 
+        **MANDATORY FIX #3: Automated Resolution**
+        If task_id is a name (not numeric), internally resolve it to actual ID.
+        FORBIDDEN to ask user for ID - tool must handle internally.
+
         Args:
             user_id: User ID from JWT token
-            task_id: Task ID to delete
+            task_id: Task ID (numeric) or task name (string like "Read book")
 
         Returns:
             Dict with success=True and deleted task info, or 404 on not found
         """
         try:
-            # Query with user isolation
+            # Validate task_id format first
+            if not task_id or task_id == "0" or task_id == "null":
+                return {"success": False, "error": "Invalid task_id: cannot be null, 0, or empty"}
+
+            # **MANDATORY FIX #3**: If task_id is not numeric, resolve it from database
+            if not task_id.isdigit():
+                print(f"DEBUG: delete_task received name '{task_id}' - resolving to ID...")
+                # Fetch all tasks for this user
+                list_result = self.list_tasks(user_id=user_id, status_filter='all')
+                available_tasks = list_result.get('data', []) if list_result.get('success') else []
+
+                if not available_tasks:
+                    return {"success": False, "error": f"No tasks found to match '{task_id}'"}
+
+                # Try to find exact match or fuzzy match
+                matched_task = None
+                for task in available_tasks:
+                    if task.get('title', '').lower() == task_id.lower():
+                        matched_task = task
+                        break
+
+                if not matched_task:
+                    # Try fuzzy match
+                    for task in available_tasks:
+                        if task_id.lower() in task.get('title', '').lower():
+                            matched_task = task
+                            break
+
+                if not matched_task:
+                    task_names = [f"'{t.get('title')}'" for t in available_tasks]
+                    return {
+                        "success": False,
+                        "error": f"No task matching '{task_id}' found. Available: {', '.join(task_names)}"
+                    }
+
+                task_id_int = matched_task.get('id')
+                print(f"DEBUG: Resolved '{task_id}' to Task ID {task_id_int}")
+            else:
+                task_id_int = task_id
+
+            # Query to fetch task and verify ownership (user isolation)
             stmt = select(Task).where(
-                (Task.id == int(task_id)) &
+                (Task.id == UUID(task_id_int)) &
                 (Task.user_id == user_id)
             )
             task = self.session.exec(stmt).first()
 
             if not task:
+                print(f"DEBUG: Task not found - ID {task_id} for User {user_id}")
                 return {"success": False, "error": "Task not found", "status_code": 404}
 
-            # Delete task
-            self.session.delete(task)
-            self.session.commit()
+            # Store task info before deletion
+            task_id_int = task.id
+            task_title = task.title
 
+            # Use SQL DELETE with user isolation (MANDATORY FIX #1)
+            print(f"DEBUG: Executing DELETE on Task ID {task_id_int} for User {user_id}")
+            delete_stmt = delete(Task).where(
+                (Task.id == UUID(str(task_id_int))) &
+                (Task.user_id == user_id)
+            )
+            self.session.execute(delete_stmt)
+            self.session.commit()
+            print(f"DEBUG: DELETE committed for Task ID {task_id_int}")
+
+            # Verify deletion by re-querying
+            verify_stmt = select(Task).where(
+                (Task.id == UUID(str(task_id_int))) &
+                (Task.user_id == user_id)
+            )
+            verify_task = self.session.exec(verify_stmt).first()
+
+            if verify_task is not None:
+                print(f"DEBUG: VERIFICATION FAILED - Task ID {task_id_int} still exists after DELETE")
+                return {"success": False, "error": "Deletion verification failed - task still exists in database"}
+
+            print(f"DEBUG: VERIFICATION SUCCESS - Task ID {task_id_int} confirmed deleted")
             return {
                 "success": True,
                 "data": {
-                    "task_id": str(task.id),
-                    "title": task.title,
+                    "id": str(task_id_int),
+                    "title": task_title,
                     "status": "deleted"
                 }
             }
 
-        except ValueError:
+        except ValueError as ve:
+            print(f"DEBUG: ValueError in delete_task - {str(ve)}")
             return {"success": False, "error": "Invalid task_id format"}
         except Exception as e:
+            print(f"DEBUG: Exception in delete_task - {str(e)}")
             self.session.rollback()
             return {"success": False, "error": f"Database error: {str(e)}"}
 
@@ -254,9 +323,13 @@ class TaskToolbox:
         """
         Update specific fields of a task.
 
+        **MANDATORY FIX #3: Automated Resolution**
+        If task_id is a name (not numeric), internally resolve it to actual ID.
+        FORBIDDEN to ask user for ID - tool must handle internally.
+
         Args:
             user_id: User ID from JWT token
-            task_id: Task ID to update
+            task_id: Task ID (numeric) or task name (string like "Read book")
             title: New title (optional)
             description: New description (optional)
             priority: New priority (optional)
@@ -267,52 +340,100 @@ class TaskToolbox:
             Dict with success=True and updated task, or 404 on not found
         """
         try:
-            # Query with user isolation
-            stmt = select(Task).where(
-                (Task.id == int(task_id)) &
-                (Task.user_id == user_id)
-            )
-            task = self.session.exec(stmt).first()
+            # Validate task_id format first
+            if not task_id or task_id == "0" or task_id == "null":
+                return {"success": False, "error": "Invalid task_id: cannot be null, 0, or empty"}
 
-            if not task:
+            # **MANDATORY FIX #3**: If task_id is not numeric, resolve it from database
+            if not task_id.isdigit():
+                print(f"DEBUG: update_task received name '{task_id}' - resolving to ID...")
+                # Fetch all tasks for this user
+                list_result = self.list_tasks(user_id=user_id, status_filter='all')
+                available_tasks = list_result.get('data', []) if list_result.get('success') else []
+
+                if not available_tasks:
+                    return {"success": False, "error": f"No tasks found to match '{task_id}'"}
+
+                # Try to find exact match or fuzzy match
+                matched_task = None
+                for task in available_tasks:
+                    if task.get('title', '').lower() == task_id.lower():
+                        matched_task = task
+                        break
+
+                if not matched_task:
+                    # Try fuzzy match
+                    for task in available_tasks:
+                        if task_id.lower() in task.get('title', '').lower():
+                            matched_task = task
+                            break
+
+                if not matched_task:
+                    task_names = [f"'{t.get('title')}'" for t in available_tasks]
+                    return {
+                        "success": False,
+                        "error": f"No task matching '{task_id}' found. Available: {', '.join(task_names)}"
+                    }
+
+                task_id_int = matched_task.get('id')
+                print(f"DEBUG: Resolved '{task_id}' to Task ID {task_id_int}")
+            else:
+                task_id_int = task_id
+
+            # Use session.get() for efficient fetching (MANDATORY FIX #3)
+            task = self.session.get(Task, UUID(task_id_int))
+
+            if not task or task.user_id != user_id:
+                print(f"DEBUG: Task not found or access denied - ID {task_id_int} for User {user_id}")
                 return {"success": False, "error": "Task not found", "status_code": 404}
 
-            # Update provided fields
+            # Build list of updates for validation
+            updates = {}
+
+            # Validate all updates before applying (fail-fast validation)
             if title is not None:
                 if not title.strip():
                     return {"success": False, "error": "Title cannot be empty"}
-                task.title = title.strip()
+                updates["title"] = title.strip()
 
             if description is not None:
-                task.description = description.strip() if description else None
+                updates["description"] = description.strip() if description else None
 
             if priority is not None:
                 if priority not in ["low", "medium", "high"]:
                     return {"success": False, "error": f"Priority must be low, medium, or high"}
-                task.priority = priority
+                updates["priority"] = priority
 
             if due_date is not None:
                 try:
-                    task.due_date = datetime.fromisoformat(due_date).date()
+                    updates["due_date"] = datetime.fromisoformat(due_date).date()
                 except (ValueError, TypeError):
                     if due_date.lower() == "tomorrow":
-                        task.due_date = (datetime.utcnow() + timedelta(days=1)).date()
+                        updates["due_date"] = (datetime.utcnow() + timedelta(days=1)).date()
                     else:
                         return {"success": False, "error": f"Invalid date format: {due_date}"}
 
             if status is not None:
                 if status not in ["pending", "completed"]:
                     return {"success": False, "error": "Status must be 'pending' or 'completed'"}
-                task.status = status
+                updates["status"] = status
 
+            # Apply updates using explicit setattr loop (MANDATORY FIX #3)
+            print(f"DEBUG: Executing UPDATE on Task ID {task_id_int} for User {user_id} with fields: {list(updates.keys())}")
+            for field_name, field_value in updates.items():
+                setattr(task, field_name, field_value)
+
+            # Commit and refresh
             self.session.add(task)
             self.session.commit()
+            print(f"DEBUG: UPDATE committed for Task ID {task_id_int}")
             self.session.refresh(task)
+            print(f"DEBUG: VERIFICATION SUCCESS - Task ID {task_id_int} refreshed after UPDATE")
 
             return {
                 "success": True,
                 "data": {
-                    "task_id": str(task.id),
+                    "id": str(task.id),
                     "title": task.title,
                     "description": task.description,
                     "status": task.status,
@@ -322,9 +443,11 @@ class TaskToolbox:
                 }
             }
 
-        except ValueError:
+        except ValueError as ve:
+            print(f"DEBUG: ValueError in update_task - {str(ve)}")
             return {"success": False, "error": "Invalid task_id format"}
         except Exception as e:
+            print(f"DEBUG: Exception in update_task - {str(e)}")
             self.session.rollback()
             return {"success": False, "error": f"Database error: {str(e)}"}
 
