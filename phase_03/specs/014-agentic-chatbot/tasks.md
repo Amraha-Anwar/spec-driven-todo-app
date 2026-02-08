@@ -1,9 +1,9 @@
-# Implementation Tasks: Phase III Agentic Chatbot
+# Implementation Tasks: Phase III Agentic Chatbot - Full CRUD + Reference Resolution + Proactive Personality
 
-**Feature**: 014-agentic-chatbot | **Branch**: `014-agentic-chatbot`
-**Spec**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md)
-**Status**: Ready for Red-Green-Refactor Implementation
-**Last Updated**: 2026-02-08
+**Feature**: `014-agentic-chatbot` | **Branch**: `014-agentic-chatbot` | **Date**: 2026-02-08
+**Plan**: [plan-CRUD-ProactivePersonality.md](./plan-CRUD-ProactivePersonality.md) | **Spec**: [spec.md](./spec.md)
+**Status**: Ready for Implementation (Green Phase)
+**Total Tasks**: 40 implementation tasks across 8 phases
 
 ---
 
