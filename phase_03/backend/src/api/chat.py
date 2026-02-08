@@ -51,6 +51,7 @@ class ChatResponseSchema(BaseModel):
     assistant_message: str
     tool_calls: List[ToolCallRecordSchema] = []
     messages: List[MessageRecordSchema]
+    action_metadata: Optional[Dict[str, Any]] = None
 
 
 # ============================================================================
@@ -165,7 +166,8 @@ async def chat_endpoint(
                 ToolCallRecordSchema(**tc) if isinstance(tc, dict) else tc
                 for tc in response.tool_calls
             ] if response.tool_calls else [],
-            messages=response.messages
+            messages=response.messages,
+            action_metadata=response.action_metadata
         )
 
     except PermissionError as e:

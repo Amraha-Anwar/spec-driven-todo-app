@@ -129,20 +129,32 @@ class TaskToolbox:
 
             tasks = self.session.exec(stmt).all()
 
+            task_data = [
+                {
+                    "id": str(task.id),
+                    "title": task.title,
+                    "description": task.description,
+                    "status": task.status,
+                    "priority": task.priority,
+                    "due_date": task.due_date.isoformat() if task.due_date else None,
+                    "created_at": task.created_at.isoformat() if task.created_at else None
+                }
+                for task in tasks
+            ]
+
+            # **FORCE DATA GROUNDING**: Include critical message for LLM
+            # This prevents the agent from hallucinating an empty list
+            task_count = len(task_data)
+            if task_count > 0:
+                grounding_message = f"CRITICAL: The following {task_count} tasks ARE in the database: {[t['title'] for t in task_data]}. You MUST list all these tasks. Do not say the list is empty. Do not hallucinate."
+            else:
+                grounding_message = "CRITICAL: There are 0 tasks in the database. The list IS empty."
+
             return {
                 "success": True,
-                "data": [
-                    {
-                        "id": str(task.id),
-                        "title": task.title,
-                        "description": task.description,
-                        "status": task.status,
-                        "priority": task.priority,
-                        "due_date": task.due_date.isoformat() if task.due_date else None,
-                        "created_at": task.created_at.isoformat() if task.created_at else None
-                    }
-                    for task in tasks
-                ]
+                "data": task_data,
+                "grounding_message": grounding_message,
+                "task_count": task_count
             }
 
         except Exception as e:
@@ -220,8 +232,17 @@ class TaskToolbox:
             if not task_id or task_id == "0" or task_id == "null":
                 return {"success": False, "error": "Invalid task_id: cannot be null, 0, or empty"}
 
-            # **MANDATORY FIX #3**: If task_id is not numeric, resolve it from database
-            if not task_id.isdigit():
+            # **MANDATORY FIX #3**: Check if task_id is already a UUID (valid format)
+            from uuid import UUID as UUIDType
+            is_uuid = False
+            try:
+                UUIDType(task_id)
+                is_uuid = True
+            except ValueError:
+                pass
+
+            # If not a UUID, try fuzzy resolution
+            if not is_uuid:
                 print(f"DEBUG: delete_task received name '{task_id}' - resolving to ID...")
                 # Fetch all tasks for this user
                 list_result = self.list_tasks(user_id=user_id, status_filter='all')
@@ -254,6 +275,7 @@ class TaskToolbox:
                 task_id_int = matched_task.get('id')
                 print(f"DEBUG: Resolved '{task_id}' to Task ID {task_id_int}")
             else:
+                # Already a valid UUID string
                 task_id_int = task_id
 
             # Query to fetch task and verify ownership (user isolation)
@@ -344,8 +366,17 @@ class TaskToolbox:
             if not task_id or task_id == "0" or task_id == "null":
                 return {"success": False, "error": "Invalid task_id: cannot be null, 0, or empty"}
 
-            # **MANDATORY FIX #3**: If task_id is not numeric, resolve it from database
-            if not task_id.isdigit():
+            # **MANDATORY FIX #3**: Check if task_id is already a UUID (valid format)
+            from uuid import UUID as UUIDType
+            is_uuid = False
+            try:
+                UUIDType(task_id)
+                is_uuid = True
+            except ValueError:
+                pass
+
+            # If not a UUID, try fuzzy resolution
+            if not is_uuid:
                 print(f"DEBUG: update_task received name '{task_id}' - resolving to ID...")
                 # Fetch all tasks for this user
                 list_result = self.list_tasks(user_id=user_id, status_filter='all')
@@ -378,6 +409,7 @@ class TaskToolbox:
                 task_id_int = matched_task.get('id')
                 print(f"DEBUG: Resolved '{task_id}' to Task ID {task_id_int}")
             else:
+                # Already a valid UUID string
                 task_id_int = task_id
 
             # Use session.get() for efficient fetching (MANDATORY FIX #3)
