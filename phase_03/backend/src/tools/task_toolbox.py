@@ -335,14 +335,16 @@ class TaskToolbox:
     @staticmethod
     def get_tools_schema() -> List[Dict[str, Any]]:
         """
-        Returns MCP tool definitions for OpenAI Agents SDK.
-        Schema follows JSON Schema format.
+        Returns tool definitions wrapped in OpenAI Agents SDK format.
+        **FIX**: Wraps each tool with {"type": "function", "function": {...}} structure
+        required by OpenAI API.
         """
-        return [
+        # Define raw tool definitions
+        tool_definitions = [
             {
                 "name": "add_task",
                 "description": "Create a new task with optional description, priority, and due date",
-                "inputSchema": {
+                "parameters": {
                     "type": "object",
                     "properties": {
                         "title": {"type": "string", "description": "Task title (required)"},
@@ -360,7 +362,7 @@ class TaskToolbox:
             {
                 "name": "list_tasks",
                 "description": "List all tasks for the user with optional status filter",
-                "inputSchema": {
+                "parameters": {
                     "type": "object",
                     "properties": {
                         "status_filter": {
@@ -374,7 +376,7 @@ class TaskToolbox:
             {
                 "name": "complete_task",
                 "description": "Mark a task as completed",
-                "inputSchema": {
+                "parameters": {
                     "type": "object",
                     "properties": {
                         "task_id": {"type": "string", "description": "Task ID to complete"}
@@ -385,7 +387,7 @@ class TaskToolbox:
             {
                 "name": "delete_task",
                 "description": "Delete a task permanently",
-                "inputSchema": {
+                "parameters": {
                     "type": "object",
                     "properties": {
                         "task_id": {"type": "string", "description": "Task ID to delete"}
@@ -396,7 +398,7 @@ class TaskToolbox:
             {
                 "name": "update_task",
                 "description": "Update specific fields of a task",
-                "inputSchema": {
+                "parameters": {
                     "type": "object",
                     "properties": {
                         "task_id": {"type": "string", "description": "Task ID to update"},
@@ -417,4 +419,13 @@ class TaskToolbox:
                     "required": ["task_id"]
                 }
             }
+        ]
+
+        # Wrap each tool in OpenAI format: {"type": "function", "function": {...}}
+        return [
+            {
+                "type": "function",
+                "function": tool
+            }
+            for tool in tool_definitions
         ]

@@ -8,12 +8,14 @@ from uuid import UUID
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session
+from sqlmodel import Session, select
 from pydantic import BaseModel, Field
 
 from ..api.deps import get_current_user
 from ..database.database import get_session
 from ..services.chat_service import ChatService, ChatRequest, ChatResponse
+from ..models.conversation import Conversation
+from ..models.message import Message
 
 router = APIRouter()
 
@@ -196,6 +198,68 @@ async def chat_endpoint(
 # ============================================================================
 # Health Check & Utility Endpoints (optional)
 # ============================================================================
+
+@router.get("/{user_id}/chat/messages", status_code=status.HTTP_200_OK)
+async def get_chat_messages(
+    user_id: str,
+    conversation_id: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: Session = Depends(get_session)
+) -> Dict[str, Any]:
+    """
+    GET /api/{user_id}/chat/messages?conversation_id={conv_id}
+
+    **T034 FIX**: Fetch existing messages from database for re-hydration on page refresh.
+    Retrieves conversation_id from localStorage and syncs UI state with database history.
+
+    Returns all messages for a specific conversation.
+    """
+    if current_user.get("id") != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized")
+
+    if not conversation_id:
+        return {"messages": []}
+
+    try:
+        from ..models.conversation import Conversation
+        from ..models.message import Message
+        from sqlmodel import select
+
+        # Verify conversation belongs to user
+        conv_stmt = select(Conversation).where(
+            (Conversation.id == UUID(conversation_id)) &
+            (Conversation.user_id == user_id)
+        )
+        conversation = session.exec(conv_stmt).first()
+
+        if not conversation:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+        # Fetch all messages for this conversation
+        msg_stmt = select(Message).where(
+            Message.conversation_id == UUID(conversation_id)
+        ).order_by(Message.created_at.asc())
+
+        messages = session.exec(msg_stmt).all()
+
+        return {
+            "messages": [
+                {
+                    "id": str(msg.id),
+                    "role": msg.role,
+                    "content": msg.content,
+                    "created_at": msg.created_at.isoformat(),
+                }
+                for msg in messages
+            ]
+        }
+
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid conversation_id format")
+    except Exception as e:
+        print(f"Error fetching messages: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch messages")
+
 
 @router.get("/{user_id}/chat/conversations", status_code=status.HTTP_200_OK)
 async def list_conversations(
