@@ -12,9 +12,9 @@ from openai import OpenAI
 class AgentRunner:
     """Orchestrates OpenAI SDK configured to use OpenRouter as base_url"""
 
-    # OpenRouter Auto-Free Router with stable fallback
-    PRIMARY_MODEL = "openrouter/auto"  # OpenRouter's intelligent free tier router
-    FALLBACK_MODEL = "mistralai/mistral-7b-instruct:free"  # Most historically stable
+    # OpenRouter model configuration - read from .env, with fallback to free tier router
+    PRIMARY_MODEL = "openrouter/auto"  # Will be overridden by OPENROUTER_MODEL from .env
+    FALLBACK_MODEL = "openrouter/free"  # Official OpenRouter free tier router - auto-selects from available free models
 
     def __init__(self, api_key: Optional[str] = None, base_url: str = "https://openrouter.ai/api/v1"):
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
