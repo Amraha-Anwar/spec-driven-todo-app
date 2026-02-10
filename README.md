@@ -13,3 +13,9 @@ Plannior is designed to showcase best practices in:
 - Full-Stack Architecture
 - Cloud-Native & Kubernetes Deployment
 - Event-Driven Systems with Kafka & Dapr
+
+It consist of 4 production phases
+1. PHASE 01 - Console Based Basic Todo
+2. PHASE 02 - Full Stack Todo Web App
+3. PHASE 03 - AI-powered Todo Web App
+4. PHASE 04 - Deployed on Docker & Kubernetes
