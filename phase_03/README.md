@@ -418,5 +418,5 @@ This project is licensed under the MIT License - see LICENSE file for details.
 
 ---
 
-**Made with ❤️ by the Plannior Team**
+**Made with ❤️ by A_.**
 
