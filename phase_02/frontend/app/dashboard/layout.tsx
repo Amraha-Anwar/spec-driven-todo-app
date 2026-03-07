@@ -2,18 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { motion } from "framer-motion";
 import { authClient } from "../../lib/auth-client";
 import { Sidebar } from "../../components/layout/sidebar";
 import { Toaster } from "../../components/ui/toast";
-import { useSidebarMode } from "../../hooks/useSidebarMode";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [isPending, setIsPending] = useState(true);
-  const { sidebarMode, isMobile, toggleSidebar } = useSidebarMode();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -53,69 +50,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!session?.session) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] relative">
+    <div className="flex flex-col md:flex-row w-full min-h-screen bg-[#0a0a0f]">
       {/* Background Gradients */}
-      <div className="fixed inset-0 pointer-events-none">
+      <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-pink-red/10 rounded-full blur-[150px]" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[150px]" />
       </div>
 
-      {/* Sidebar Toggle Button - Fixed positioning to prevent overlap */}
-      <motion.button
-        whileTap={{ scale: 0.95 }}
-        onClick={toggleSidebar}
-        className={`fixed z-[45] p-2 rounded-md bg-black/40 backdrop-blur-sm border border-white/20 text-white/80 hover:text-white hover:bg-black/60 transition-all 
-          ${isMobile 
-            ? "top-3 right-3" 
-            : (sidebarMode === "full" ? "top-4 left-[210px]" : "top-4 left-4")
-          }`}
-        aria-label="Toggle sidebar"
-      >
-        {sidebarMode === "full" ? <X className="h-4 w-4" /> : <Menu className="h-5 w-5" />}
-      </motion.button>
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block sticky top-0 h-screen z-20">
+        <Sidebar isSlim={false} />
+      </div>
 
-      {/* Sidebar (responsive with full/slim/hidden modes) */}
-      <AnimatePresence mode="wait">
-        {sidebarMode !== "hidden" && (
-          <motion.div
-            key={sidebarMode}
-            initial={{ x: -256, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -256, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="fixed md:relative z-40"
-          >
-            <Sidebar isSlim={sidebarMode === "slim"} isMobile={isMobile} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Mobile Backdrop */}
-      <AnimatePresence>
-        {sidebarMode === "full" && isMobile && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            onClick={toggleSidebar}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
-          />
-        )}
-      </AnimatePresence>
+      {/* Mobile Sidebar - Drawer with fixed header */}
+      <div className="md:hidden">
+        <Sidebar isSlim={false} isMobile={true} />
+      </div>
 
       {/* Main Content */}
-      <motion.div
-        animate={{
-          marginLeft: isMobile ? 0 : (sidebarMode === "hidden" ? 0 : (sidebarMode === "slim" ? 80 : 256))
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`min-h-screen p-8 relative z-10 ${!isMobile && sidebarMode !== "hidden" ? "md:block" : ""} pt-16 md:pt-8`}
-      >
-        <div className="max-w-7xl mx-auto">
-          {children}
-        </div>
-      </motion.div>
+      <div className="flex-1 w-full md:w-auto overflow-y-auto">
+        <motion.div
+          className="relative z-10 min-h-screen pt-14 md:pt-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="p-4 md:p-8 min-h-full">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
       {/* Toast Notifications */}
       <Toaster />

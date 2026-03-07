@@ -17,7 +17,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Plannoir - Premium Task Management",
+  title: "Plannoir - Where Planning Meets Intelligence.",
   description: "Manage your tasks with Plannior, sleek and productive task management app.",
 };
 
