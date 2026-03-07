@@ -6,7 +6,7 @@ import { Toaster } from "../components/ui/toast";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Plannoir - Premium Task Management",
+  title: "Plannoir - Where Planning Meets Intelligence.",
   description: "Manage your tasks with Plannior, sleek and productive task management app.",
 };
 
