@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Home, BarChart3, Settings, CheckSquare, LogOut, X, Menu } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "../../lib/auth-client";
 import { Avatar } from "../ui/avatar";
@@ -195,7 +196,7 @@ export function Sidebar({ isSlim = false, isMobile = false }: SidebarProps) {
               </h1>
               {!open && (
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-red to-pink-red/50 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">P</span>
+                  <Image src="/images/logo.png" alt="P" className="text-white font-bold text-sm" width={100} height={100} />
                 </div>
               )}
             </motion.div>
