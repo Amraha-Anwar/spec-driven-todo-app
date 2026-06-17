@@ -22,7 +22,13 @@ export const auth = betterAuth({
       },
     },
   },
-  
+
+  user: {
+    deleteUser: {
+      enabled: true,
+    },
+  },
+
   secret: process.env.BETTER_AUTH_SECRET,
   
   plugins: [

@@ -300,7 +300,7 @@ export default function SignUpPage() {
                 <input
                   type="text"
                   className="auth-input"
-                  placeholder="Amraha Anwar"
+                  placeholder="Your Name"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   required

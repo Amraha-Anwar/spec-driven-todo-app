@@ -1,11 +1,43 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "../../../lib/auth-client";
 import { Avatar } from "../../../components/ui/avatar";
 import { toast } from "../../../lib/toast";
-import { User, Mail, Save, Upload, Check, Settings, Bell, Moon, Sparkles } from "lucide-react";
+import { User, Mail, Save, Upload, Check, Settings, Bell, Moon, Sparkles, AlertTriangle, X } from "lucide-react";
+
+/* ── reusable section card ── */
+const SectionCard = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    style={{ position: "relative", borderRadius: 18, padding: "28px 26px", background: "rgba(8,3,5,0.92)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 8px 30px rgba(0,0,0,0.4)", overflow: "hidden" }}
+  >
+    <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: 1, background: "linear-gradient(90deg,transparent,rgba(244,63,94,0.2),transparent)" }} />
+    {children}
+  </motion.div>
+);
+
+const SectionTitle = ({ icon: Icon, title, sub }: { icon: any; title: string; sub: string }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+    <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Icon size={15} color="#f43f5e" />
+    </div>
+    <div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>{title}</div>
+      <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{sub}</div>
+    </div>
+  </div>
+);
+
+const Label = ({ icon: Icon, text }: { icon: any; text: string }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+    <Icon size={11} color="rgba(244,63,94,0.6)" />
+    <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>{text}</span>
+  </div>
+);
 
 export default function SettingsPage() {
   const [session, setSession] = useState<any>(null);
@@ -15,6 +47,10 @@ export default function SettingsPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [nameFocused, setNameFocused] = useState(false);
   const [emailNotif, setEmailNotif] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const getSession = async () => {
@@ -66,36 +102,30 @@ export default function SettingsPage() {
     }
   };
 
-  /* ── reusable section card ── */
-  const SectionCard = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      style={{ position: "relative", borderRadius: 18, padding: "28px 26px", background: "rgba(8,3,5,0.92)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 8px 30px rgba(0,0,0,0.4)", overflow: "hidden" }}
-    >
-      <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: 1, background: "linear-gradient(90deg,transparent,rgba(244,63,94,0.2),transparent)" }} />
-      {children}
-    </motion.div>
-  );
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) { toast.error("Please enter your password to confirm"); return; }
+    setIsDeleting(true);
+    try {
+      const { error } = await authClient.deleteUser({ password: deletePassword });
+      if (error) {
+        toast.error(error.message || "Failed to delete account");
+        setIsDeleting(false);
+        return;
+      }
+      toast.success("Your account has been deleted");
+      setDeleteOpen(false);
+      router.push("/");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete account");
+      setIsDeleting(false);
+    }
+  };
 
-  const SectionTitle = ({ icon: Icon, title, sub }: { icon: any; title: string; sub: string }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-      <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Icon size={15} color="#f43f5e" />
-      </div>
-      <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>{title}</div>
-        <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{sub}</div>
-      </div>
-    </div>
-  );
-
-  const Label = ({ icon: Icon, text }: { icon: any; text: string }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-      <Icon size={11} color="rgba(244,63,94,0.6)" />
-      <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>{text}</span>
-    </div>
-  );
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setDeleteOpen(false);
+    setDeletePassword("");
+  };
 
   return (
     <>
@@ -303,6 +333,7 @@ export default function SettingsPage() {
                 cursor: "pointer", fontFamily: "'Poppins',sans-serif",
                 transition: "all 0.2s ease",
               }}
+                onClick={() => setDeleteOpen(true)}
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(248,113,113,0.15)"; el.style.color = "#f87171"; }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(248,113,113,0.08)"; el.style.color = "rgba(248,113,113,0.8)"; }}
               >
@@ -313,6 +344,96 @@ export default function SettingsPage() {
         </SectionCard>
 
       </div>
+
+      {/* ── Delete account confirmation modal ── */}
+      <AnimatePresence>
+        {deleteOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={closeDeleteModal}
+              style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+            />
+            <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, pointerEvents: "none" }}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                style={{ width: "100%", maxWidth: 440, pointerEvents: "auto" }}
+              >
+                <div style={{ position: "relative", borderRadius: 20, padding: "28px 26px", background: "rgba(10,3,5,0.97)", border: "1px solid rgba(244,63,94,0.18)", boxShadow: "0 32px 90px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.04)", fontFamily: "'Poppins',sans-serif", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", top: 0, left: "12%", right: "12%", height: 1, background: "linear-gradient(90deg,transparent,rgba(244,63,94,0.45),transparent)" }} />
+                  <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle,rgba(244,63,94,0.1) 0%,transparent 65%)", filter: "blur(30px)", pointerEvents: "none" }} />
+
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, position: "relative", zIndex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <motion.div
+                        animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.08, 1.08, 1.08, 1] }}
+                        transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+                        style={{ width: 46, height: 46, borderRadius: "50%", flexShrink: 0, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.28)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 18px rgba(244,63,94,0.18)" }}
+                      >
+                        <AlertTriangle size={21} color="#f87171" />
+                      </motion.div>
+                      <div>
+                        <h2 style={{ fontSize: 17, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", margin: 0 }}>Delete Account</h2>
+                        <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.32)", margin: "2px 0 0" }}>This action cannot be undone</p>
+                      </div>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
+                      onClick={closeDeleteModal} disabled={isDeleting} aria-label="Close"
+                      style={{ width: 30, height: 30, borderRadius: 8, border: "none", cursor: isDeleting ? "not-allowed" : "pointer", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s ease" }}
+                    >
+                      <X size={15} />
+                    </motion.button>
+                  </div>
+
+                  {/* Content */}
+                  <div style={{ marginBottom: 24, position: "relative", zIndex: 1 }}>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: 14, lineHeight: 1.6 }}>
+                      This will permanently delete your account and all associated data. Enter your password to confirm.
+                    </p>
+                    <Label icon={User} text="Password" />
+                    <input
+                      type="password" className="sp-input"
+                      placeholder="Enter your password"
+                      value={deletePassword}
+                      onChange={e => setDeletePassword(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !isDeleting) handleDeleteAccount(); }}
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: 10, position: "relative", zIndex: 1 }}>
+                    <button
+                      onClick={closeDeleteModal} disabled={isDeleting}
+                      style={{ flex: 1, padding: "12px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.55)", fontSize: 13.5, fontWeight: 600, fontFamily: "'Poppins',sans-serif", cursor: isDeleting ? "not-allowed" : "pointer", opacity: isDeleting ? 0.5 : 1, transition: "all 0.2s ease" }}
+                      onMouseEnter={e => { if (!isDeleting) { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.07)"; el.style.color = "#fff"; } }}
+                      onMouseLeave={e => { if (!isDeleting) { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.04)"; el.style.color = "rgba(255,255,255,0.55)"; } }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteAccount} disabled={isDeleting}
+                      style={{ flex: 1, padding: "12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#9f1239 0%,#dc2626 100%)", color: "#fff", fontSize: 13.5, fontWeight: 700, fontFamily: "'Poppins',sans-serif", cursor: isDeleting ? "not-allowed" : "pointer", opacity: isDeleting ? 0.6 : 1, boxShadow: "0 5px 22px rgba(220,38,38,0.35), inset 0 1px 0 rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s ease" }}
+                      onMouseEnter={e => { if (!isDeleting) (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
+                      onMouseLeave={e => { if (!isDeleting) (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
+                    >
+                      {isDeleting ? (
+                        <><span className="sp-save-spin" /> Deleting…</>
+                      ) : (
+                        "Delete Account"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }
