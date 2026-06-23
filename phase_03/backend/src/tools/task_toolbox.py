@@ -186,8 +186,11 @@ class TaskToolbox:
             if not task:
                 return {"success": False, "error": "Task not found", "status_code": 404}
 
-            # Update status
+            # Update status. The Task model carries BOTH `status` and the boolean
+            # `is_completed` — the REST API / frontend read `is_completed`, so keep
+            # the two in sync or the UI never reflects the completion.
             task.status = "completed"
+            task.is_completed = True
             self.session.add(task)
             self.session.commit()
             self.session.refresh(task)
@@ -449,6 +452,9 @@ class TaskToolbox:
                 if status not in ["pending", "completed"]:
                     return {"success": False, "error": "Status must be 'pending' or 'completed'"}
                 updates["status"] = status
+                # Keep the boolean `is_completed` (read by the REST API / frontend)
+                # in sync with the textual status so the UI reflects the change.
+                updates["is_completed"] = (status == "completed")
 
             # Apply updates using explicit setattr loop (MANDATORY FIX #3)
             print(f"DEBUG: Executing UPDATE on Task ID {task_id_int} for User {user_id} with fields: {list(updates.keys())}")

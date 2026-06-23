@@ -1,75 +1,73 @@
 """
-Verification tests for OpenRouter Free Tier model configuration
-Tests that AgentRunner correctly uses the free tier model (Gemini 2.0 Flash)
+Verification tests for OpenAI model configuration
+Tests that AgentRunner correctly uses the configured OpenAI model (gpt-4o)
 """
 import pytest
 import os
 from backend.src.services.agent_runner import AgentRunner
 
 
-class TestFreetierModelConfiguration:
-    """Test OpenRouter Free Tier model configuration"""
+class TestOpenAIModelConfiguration:
+    """Test OpenAI model configuration"""
 
-    def test_env_variable_set_to_free_tier(self):
-        """Verify OPENROUTER_MODEL is set to free tier model"""
+    def test_env_variable_set_to_openai_model(self):
+        """Verify OPENAI_MODEL is set to an OpenAI model"""
         # Load from .env file
         from pathlib import Path
         env_path = Path(__file__).parent.parent.parent / ".env"
         if env_path.exists():
             with open(env_path) as f:
                 for line in f:
-                    if line.startswith("OPENROUTER_MODEL"):
+                    if line.startswith("OPENAI_MODEL="):
                         model = line.split("=", 1)[1].strip()
-                        assert "google/gemini-2.0-flash-exp:free" in model, \
-                            f"Expected free tier model, got '{model}'"
+                        assert model.startswith("gpt-"), \
+                            f"Expected an OpenAI gpt- model, got '{model}'"
                         return
         # If .env not found, check environment variable
-        model = os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-exp:free")
-        assert ":free" in model, f"Expected free tier model, got '{model}'"
+        model = os.getenv("OPENAI_MODEL", "gpt-4o")
+        assert model.startswith("gpt-"), f"Expected an OpenAI gpt- model, got '{model}'"
 
-    def test_agent_runner_uses_free_tier_model(self):
-        """Verify AgentRunner defaults to free tier if env not set"""
-        # The default fallback should be free tier model
-        api_key = os.getenv("OPENROUTER_API_KEY")
+    def test_agent_runner_uses_openai_model(self):
+        """Verify AgentRunner defaults to an OpenAI model"""
+        api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
             runner = AgentRunner(api_key=api_key)
             # Just verify it instantiates successfully
             assert runner is not None
             assert runner.api_key == api_key
+            assert runner.PRIMARY_MODEL == "gpt-4o"
 
-    def test_max_tokens_set_to_500(self):
-        """Verify max_tokens is set to 500 for free tier rate limits"""
-        # This is a configuration check - 500 tokens is the limit we set
-        max_tokens_limit = 500
-        assert max_tokens_limit == 500, "max_tokens should be 500 for free tier"
+    def test_max_tokens_default(self):
+        """Verify max_tokens default gives synthesis headroom on a paid key"""
+        import inspect
+        sig = inspect.signature(AgentRunner.run_agent)
+        assert sig.parameters["max_tokens"].default == 1000, \
+            "max_tokens default should be 1000"
 
-    def test_free_tier_model_name_format(self):
-        """Verify free tier model follows OpenRouter format"""
-        model = os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-exp:free")
-        # Free tier models follow pattern: provider/model-name:free
-        assert ":free" in model, f"Model '{model}' should include ':free' suffix"
-        assert "/" in model, f"Model '{model}' should include '/' separator"
+    def test_openai_model_name_format(self):
+        """Verify OpenAI model uses a bare name (no provider '/' prefix)"""
+        model = os.getenv("OPENAI_MODEL", "gpt-4o")
+        assert "/" not in model, f"Model '{model}' should not include a '/' provider prefix"
+        assert model.startswith("gpt-"), f"Model '{model}' should start with 'gpt-'"
 
-    def test_openai_sdk_compatibility(self):
-        """Verify OpenRouter + OpenAI SDK compatibility for free tier"""
-        # AgentRunner uses OpenAI SDK with OpenRouter base_url
-        # This should work with any OpenRouter model including free tier
-        api_key = os.getenv("OPENROUTER_API_KEY")
+    def test_openai_sdk_default_endpoint(self):
+        """Verify the client targets the official OpenAI endpoint by default"""
+        api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
-            runner = AgentRunner(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+            runner = AgentRunner(api_key=api_key)
             assert runner.client is not None, "OpenAI client should be initialized"
-            assert runner.base_url == "https://openrouter.ai/api/v1"
+            assert "api.openai.com" in str(runner.client.base_url)
 
 
 class TestProactivePersonalityPreservation:
-    """Test that proactive personality is preserved with free tier model"""
+    """Test that proactive personality is preserved with the OpenAI model"""
 
     def test_synthesis_system_prompt_english(self):
         """Verify English synthesis prompt is preserved"""
         # The synthesis logic should still be intact
         expected_terms = ["task", "priority", "due date", "friendly", "emoji"]
         # Just verify the logic exists in AgentRunner
-        api_key = os.getenv("OPENROUTER_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
             runner = AgentRunner(api_key=api_key)
             assert runner is not None
@@ -79,7 +77,7 @@ class TestProactivePersonalityPreservation:
         # Roman Urdu synthesis should still be intact
         expected_terms = ["task", "priority", "Urdu", "emoji"]
         # Just verify the logic exists
-        api_key = os.getenv("OPENROUTER_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
             runner = AgentRunner(api_key=api_key)
             assert runner is not None
@@ -91,7 +89,7 @@ class TestToolBindingAndSchema:
     def test_tool_choice_auto_compatibility(self):
         """Verify tool_choice='auto' is still used"""
         # AgentRunner should still support tool_choice='auto'
-        api_key = os.getenv("OPENROUTER_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
             runner = AgentRunner(api_key=api_key)
             assert runner is not None
@@ -99,9 +97,9 @@ class TestToolBindingAndSchema:
     def test_mcp_schema_openai_format(self):
         """Verify MCP tools are wrapped in OpenAI format"""
         # Tools should be in format: {"type": "function", "function": {...}}
-        # This is verified by ChatService._get_tools_schema()
+        # This is verified by TaskToolbox.get_tools_schema()
         # Just verify AgentRunner doesn't break this
-        api_key = os.getenv("OPENROUTER_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
             runner = AgentRunner(api_key=api_key)
             assert runner is not None

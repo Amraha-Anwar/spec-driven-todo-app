@@ -78,6 +78,12 @@ def update_task(user_id: str, task_id: str, task_update: TaskUpdate, current_use
     for field, value in update_data.items():
         setattr(db_task, field, value)
 
+    # The Task model carries both `is_completed` (read by the frontend) and the
+    # textual `status` (used by the AI agent's list/complete tools). Keep them in
+    # sync so a task completed here is also seen as completed by the assistant.
+    if "is_completed" in update_data:
+        db_task.status = "completed" if update_data["is_completed"] else "pending"
+
     db_task.updated_at = datetime.now(timezone.utc)
     session.add(db_task)
     session.commit()

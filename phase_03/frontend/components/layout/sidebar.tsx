@@ -1,11 +1,12 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, BarChart3, Settings, CheckSquare, LogOut, X, Menu } from "lucide-react";
+import { Home, BarChart3, Settings, CheckSquare, LogOut, X, Menu, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "../../lib/auth-client";
+import { OPEN_CHAT_EVENT } from "../chat/ChatWidget";
 import { Avatar } from "../ui/avatar";
 import { useAuth } from "../../app/hooks/use-auth";
 import {
@@ -83,6 +84,9 @@ export function Sidebar({ isSlim = false, isMobile = false }: SidebarProps) {
       },
     });
   };
+
+  // Open the AI chat workspace (handled by ChatWidget via a global event).
+  const openChat = () => window.dispatchEvent(new Event(OPEN_CHAT_EVENT));
 
   /* ── Mobile drawer version ── */
   if (isMobileView) {
@@ -172,6 +176,26 @@ export function Sidebar({ isSlim = false, isMobile = false }: SidebarProps) {
                       );
                     })}
                   </nav>
+
+                  {/* Chat Assistant launcher */}
+                  <motion.button
+                    initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: navigation.length * 0.05 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => { openChat(); setOpen(false); }}
+                    className="sb-link"
+                    style={{
+                      padding: "12px 16px", minHeight: 44, width: "100%", marginTop: 4, border: "none", cursor: "pointer",
+                      background: "linear-gradient(135deg,rgba(159,18,57,0.22),rgba(225,29,72,0.16))",
+                      boxShadow: "inset 0 0 0 1px rgba(244,63,94,0.25)",
+                      color: "#fff",
+                    }}
+                  >
+                    <span className="sb-link-icon" style={{ color: "#f43f5e" }}>
+                      <Sparkles size={18} />
+                    </span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700 }}>Chat Assistant</span>
+                  </motion.button>
 
                   {/* Profile + Sign out */}
                   <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -280,6 +304,29 @@ export function Sidebar({ isSlim = false, isMobile = false }: SidebarProps) {
                   </motion.div>
                 );
               })}
+
+              {/* Chat Assistant launcher */}
+              <motion.button
+                initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: navigation.length * 0.08 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={openChat}
+                title={!open ? "Chat Assistant" : undefined}
+                className="sb-link"
+                style={{
+                  marginTop: 6, width: "100%", border: "none", cursor: "pointer",
+                  padding: open ? "11px 16px" : "11px",
+                  justifyContent: open ? "flex-start" : "center",
+                  background: "linear-gradient(135deg,rgba(159,18,57,0.22),rgba(225,29,72,0.16))",
+                  boxShadow: "inset 0 0 0 1px rgba(244,63,94,0.25)",
+                  color: "#fff",
+                }}
+              >
+                <span className="sb-link-icon" style={{ color: "#f43f5e" }}>
+                  <Sparkles size={18} />
+                </span>
+                {open && <span style={{ fontSize: 13.5, fontWeight: 700 }}>Chat Assistant</span>}
+              </motion.button>
             </nav>
           </div>
 

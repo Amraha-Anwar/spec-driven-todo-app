@@ -1,12 +1,12 @@
 """
-Chat Service: Orchestrates stateless chat flow with OpenRouter LLM and MCP tools
+Chat Service: Orchestrates stateless chat flow with OpenAI LLM and MCP tools
 Handles conversation management, message persistence, and agent orchestration
 """
 import os
 import json
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlmodel import Session, select
 
 from ..models.conversation import Conversation
@@ -58,8 +58,7 @@ class ChatService:
     def __init__(self, session: Session):
         self.session = session
         self.agent_runner = AgentRunner(
-            api_key=os.getenv("OPENROUTER_API_KEY"),
-            base_url="https://openrouter.ai/api/v1"
+            api_key=os.getenv("OPENAI_API_KEY")
         )
         self.task_toolbox = TaskToolbox(session=session)
         self.reference_resolver = ReferenceResolver()
@@ -73,7 +72,7 @@ class ChatService:
         Core stateless chat processing pipeline:
         1. Fetch or create conversation
         2. Retrieve last 10 messages from database
-        3. Call OpenRouter agent with MCP tool binding
+        3. Call OpenAI agent with MCP tool binding
         4. Persist user and assistant messages to DB
         """
         # 1. Ensure conversation exists
@@ -106,29 +105,11 @@ class ChatService:
         for task in actual_tasks:
             print(f"DEBUG:   Task ID {task.get('id')}: '{task.get('title')}'")
 
-        # If no tasks, return early with explicit message
-        if not actual_tasks:
-            print(f"DEBUG: No tasks found for User {user_id} - returning empty list message")
-            empty_message = "Aapki list khali hai" if request.language_hint == "ur" else "Your task list is empty"
-
-            await self._save_message(
-                conversation_id=conversation.id,
-                role="assistant",
-                content=empty_message
-            )
-
-            return ChatResponse(
-                conversation_id=conversation.id,
-                assistant_message=empty_message,
-                tool_calls=[],
-                messages=[{
-                    "id": str(conversation.id),
-                    "role": "assistant",
-                    "content": empty_message,
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                }],
-                action_metadata=None
-            )
+        # NOTE: We deliberately do NOT short-circuit when the task list is empty.
+        # The agent must always run so it can (a) answer conversationally, (b) create
+        # the very first task, and (c) report an empty list naturally when asked.
+        # The actual task list (which may be empty) is injected into the system prompt
+        # below so the model is grounded in real database state.
 
         # 4. Build LLM request with system prompt and context
         system_prompt = self._build_system_prompt(request.language_hint, actual_tasks=actual_tasks)
@@ -149,14 +130,14 @@ class ChatService:
             for msg in all_messages
         ]
 
-        # 5. Call OpenRouter agent with MCP tools bound
+        # 5. Call OpenAI agent with MCP tools bound
         try:
             agent_response = await self.agent_runner.run_agent(
                 system_prompt=system_prompt,
                 messages=messages_for_llm,
                 user_id=user_id,
                 tools=task_toolbox.get_tools_schema(),  # **T025**: Pass tools to force tool_choice='auto'
-                model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4-turbo"),
+                model=os.getenv("OPENAI_MODEL", "gpt-4o"),
                 language_hint=request.language_hint,  # **NEW**: Pass language hint for response synthesis
                 actual_tasks=actual_tasks  # **MANDATORY FIX #1**: Pass actual tasks for grounding
             )
@@ -192,7 +173,7 @@ class ChatService:
                         messages=messages_for_llm,
                         user_id=user_id,
                         tools=task_toolbox.get_tools_schema(),
-                        model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4-turbo"),
+                        model=os.getenv("OPENAI_MODEL", "gpt-4o"),
                         language_hint=request.language_hint,
                         actual_tasks=actual_tasks,
                         force_tool_name=expected_tool  # **HARDENED BINDING**: Force specific tool during retry
@@ -230,15 +211,27 @@ class ChatService:
             # **NEW**: If tools were executed, synthesize a meaningful confirmation message
             executed_tools = agent_response.get('executed_tools', [])
             if executed_tools:
-                # Collect tool results for synthesis
-                tool_results = [
-                    {
-                        "action": tool.get('name', 'Unknown'),
-                        "success": 'error' not in tool,
-                        "message": tool.get('result', {}).get('message', str(tool.get('result', tool.get('error', 'Completed'))))
-                    }
-                    for tool in executed_tools
-                ]
+                # Collect tool results for synthesis. We preserve the real `data`
+                # (task fields, or the full list for list_tasks) and read success
+                # from the tool's own result so failures are reported honestly.
+                tool_results = []
+                for tool in executed_tools:
+                    result = tool.get('result', {}) or {}
+                    if 'error' in tool:
+                        # Tool raised an exception during execution
+                        tool_results.append({
+                            "action": tool.get('name', 'Unknown'),
+                            "success": False,
+                            "message": str(tool.get('error', 'Tool execution failed')),
+                            "data": None
+                        })
+                    else:
+                        tool_results.append({
+                            "action": tool.get('name', 'Unknown'),
+                            "success": bool(result.get('success', False)),
+                            "message": result.get('error') or result.get('message', 'Completed'),
+                            "data": result.get('data')
+                        })
 
                 # Trigger second LLM turn to synthesize confirmation
                 synthesis_response = await self.agent_runner.run_agent(
@@ -370,15 +363,26 @@ class ChatService:
 
     def _build_system_prompt(self, language: str, actual_tasks: List[Dict[str, Any]] = None) -> str:
         """
-        Build system prompt with MANDATORY FIX #1: Inject actual database tasks.
-        Agent must ground responses in real database state, not hallucinations.
-        Hide UUIDs from LLM to keep responses clean.
+        Build system prompt grounded in real database state.
+
+        - Injects the user's ACTUAL tasks so the model never hallucinates a list.
+        - Computes the date dynamically (no hardcoded "Feb 8, 2026").
+        - Allows natural conversation for greetings/chit-chat, while REQUIRING a
+          tool call for any task operation (add/list/delete/update/complete).
+        - Hides UUIDs from the model to keep responses clean.
         """
         if actual_tasks is None:
             actual_tasks = []
 
+        # Dynamic temporal context (replaces the previous hardcoded Feb 8, 2026)
+        now = datetime.now(timezone.utc)
+        today_str = now.strftime("%A, %B %d, %Y")  # e.g. "Friday, June 19, 2026"
+        today_iso = now.strftime("%Y-%m-%d")
+        tomorrow_iso = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+        next_week_iso = (now + timedelta(days=7)).strftime("%Y-%m-%d")
+        current_year = now.strftime("%Y")
+
         # Format task list for injection (without exposing UUIDs)
-        task_list_str = ""
         if actual_tasks:
             task_list_str = "\n**USER'S ACTUAL TASKS (FROM DATABASE)**:\n"
             for idx, task in enumerate(actual_tasks, 1):
@@ -387,102 +391,58 @@ class ChatService:
                 priority = task.get('priority', '?')
                 # Use 1-indexed position instead of UUID
                 task_list_str += f"{idx}. {title} (Status: {status}, Priority: {priority})\n"
-            task_list_str += "\n**IMPORTANT - DO NOT EXPOSE TASK IDS TO USER**:\n"
-            task_list_str += "- NEVER mention task IDs (UUIDs) in your responses\n"
-            task_list_str += "- Refer to tasks ONLY by their titles\n"
-            task_list_str += "- Use clean bulleted lists when showing tasks\n"
         else:
-            task_list_str = "\n**NO TASKS FOUND**: The user currently has no tasks in their database.\n"
+            task_list_str = "\n**NO TASKS YET**: The user currently has no tasks in their database. If they ask to see tasks, tell them their list is empty and offer to add one. If they ask to add a task, use the add_task tool.\n"
 
         if language == "ur":
-            return f"""**STRICT MODE - TASK MANAGER LOCKED DOWN**:
-Aap ek TASK MANAGER ho. Aap list, delete, ya update requests sirf text se jawab dene se FORBIDDEN ho. Aap ZAROOR tool call karenga pehle.
+            return f"""Aap "Plannior" ka ek dostana, smart task management assistant ho.
+Aap Roman Urdu aur English dono samajhte ho aur usi zubaan mein jawab dete ho jis mein user baat kare.
 
-**T053 FIX - AGENTIC AI MANDATE**:
-Aap ek Agentic AI task management assistant ho.
-Aap SIRF tools ke through action perform kar sakte ho.
-AGAR aap tool call nahi karte, to aap FAIL ho gaye ho.
+**CONVERSATION**:
+- Agar user sirf baat-cheet kare (salam, "kaise ho", "tum kya kar sakte ho"), to seedha, garmjoshi se jawab do — koi tool zaroori nahi.
+- Agar user koi TASK operation kare (add, list/dikhana, delete, update, complete), to aap ZAROOR sahi tool call karo. Sirf text se in cheezon ka jawab mat do.
 
-**CRITICAL - CURRENT DATE AND TIME**:
-TODAY IS SUNDAY, FEBRUARY 8, 2026.
-Current Date: February 8, 2026
-Aaj ki exact date: February 8, 2026 hai.
-Current year IS 2026 - NEVER use 2024, 2025, or any other year.
-
-Aap ek helpful task management assistant ho.
-Aap users ke tasks ko manage karne me help karte ho.
-Roman Urdu aur English dono samajhte ho.
-
-**CRITICAL - MANDATORY FIX #1: FETCH-BEFORE-TALK**:
-Neeche user ke ACTUAL tasks database se hain:
+**FETCH-BEFORE-TALK (grounding)**:
+Neeche user ke ASAL tasks database se hain. Inhi ke saath kaam karo:
 {task_list_str}
+Jab user kisi task ka naam le (jaise "Grocery Shopping"), pehle check karo ke woh upar list mein hai. Agar nahi hai, to politely batao ke us naam ka koi task nahi mila aur available tasks dikha do. (Tool khud milte-julte naam dhoond leta hai, to title pass kar dena theek hai.)
 
-Aap SIRF un tasks ke saath kaam karo jo upar likalike hain.
-Jab user koi task ka naam likh de (jaise "Grocery Shopping"), pehle check karo ke woh database mein hai ya nahi.
-Agar task database mein nahi hai, to user ko "I found no tasks with that name" kehna aur available tasks batana.
+**CLEAN EXPERIENCE**:
+- KABHI task IDs (UUIDs) user ko mat dikhao — sirf titles use karo.
+- Tasks dikhate waqt clean bullet list do, ID ke baghair.
+- Misaal: "Aapke tasks:\n• Grocery shopping\n• Report likhna\n• Doctor se call"
 
-**IMPORTANT - CLEAN EXPERIENCE**:
-- KABHI BHI task IDs (UUIDs) user ko mat batana
-- Sirf task titles se refer karo
-- Tasks list karte waqt sirf naam aur details dena, ID nahi
-- Example: "Aapke tasks:\n• Grocery shopping\n• Report likhna\n• Doctor se call"
+**DATE/TIME (dynamic)**:
+Aaj ki date: {today_str} (ISO: {today_iso}).
+- "kal"/"tomorrow" = {tomorrow_iso}
+- "agle hafte"/"next week" = {next_week_iso} ya uske baad
+- due_date hamesha ISO format (YYYY-MM-DD) mein tool ko do.
+- Current year {current_year} hai — koi purani date mat use karo."""
 
-**CRITICAL - TEMPORAL CONTEXT**:
-TODAY IS SUNDAY, FEBRUARY 8, 2026.
-Aaj ki exact date: February 8, 2026 hai.
-- Jab user "tomorrow" ya "kal" kahe, to EXACTLY Feb 9, 2026 set karo.
-- Jab user "next week" kahe, to Feb 15, 2026 ya uske baad set karo.
-- Jab user koi specific date na dey aur default karna ho, to ALWAYS Feb 8, 2026 use karo.
+        return f"""You are "Plannior", a friendly and smart task management assistant.
+You understand both English and Roman Urdu and reply in whichever language the user uses.
 
-**FORBIDDEN DATES**:
-KABHI BHI 2024, 2025, ya kisi bhi past date use mat karo.
-Sab dates 2026 mein hone chahiye."""
+**CONVERSATION**:
+- If the user is just chatting (greetings, "how are you", "what can you do"), reply directly and warmly — no tool needed.
+- If the user requests a TASK operation (add, list/show, delete, update, complete), you MUST call the appropriate tool. Never answer these with text alone.
 
-        return f"""**STRICT MODE - TASK MANAGER LOCKED DOWN**:
-You are a TASK MANAGER. You are FORBIDDEN from answering any request to list, delete, or update tasks with text alone. You MUST call the corresponding tool first.
-
-**T053 FIX - AGENTIC AI MANDATE**:
-You are an Agentic AI assistant.
-You CANNOT perform actions without calling tools.
-If you don't call a tool, you have FAILED.
-Every task operation (add, delete, update, complete, list) REQUIRES a tool call.
-
-**CRITICAL - CURRENT DATE AND TIME**:
-TODAY IS SUNDAY, FEBRUARY 8, 2026.
-Current Date: February 8, 2026
-The current date is exactly February 8, 2026.
-Current year IS 2026 - NEVER use 2024, 2025, or any other year.
-
-You are a helpful task management assistant.
-You help users manage their tasks.
-Respond in clear, concise language.
-
-**CRITICAL - MANDATORY FIX #1: FETCH-BEFORE-TALK**:
-Below are the user's ACTUAL tasks from their database:
+**FETCH-BEFORE-TALK (grounding)**:
+Below are the user's ACTUAL tasks from their database. Work only with these:
 {task_list_str}
+When a user mentions a task by name (like "Grocery Shopping"), check whether it exists in the list above. If it does not, politely say you found no task with that name and show the available tasks. (The tools also resolve close/partial names, so passing the title is fine.)
 
-You MUST ONLY work with the tasks listed above.
-When a user mentions a task name (like "Grocery Shopping"), first check if it exists in the database list.
-If the task does NOT exist in the database, you MUST say "I found no tasks with that name" and list the actual tasks available.
+**CLEAN USER EXPERIENCE**:
+- NEVER show task IDs (UUIDs) to the user — refer to tasks only by their titles.
+- When listing tasks, use a clean bulleted format with no IDs.
+- Good: "Your tasks:\n• Buy milk\n• Finish report\n• Call dentist"
+- Bad: "Your tasks:\n• ID 550e8400-...: Buy milk"
 
-**IMPORTANT - CLEAN USER EXPERIENCE**:
-- NEVER show task IDs (UUIDs) to users in your responses
-- Always refer to tasks ONLY by their titles
-- When listing tasks, use a clean bulleted format without any IDs
-- Example good response: "Your tasks:\n• Buy milk\n• Finish report\n• Call dentist"
-- Example bad response: "Your tasks:\n• ID 550e8400-...: Buy milk"
-
-**CRITICAL - TEMPORAL CONTEXT**:
-TODAY IS SUNDAY, FEBRUARY 8, 2026.
-The current date is exactly February 8, 2026.
-- When user says "tomorrow" or "next day", use EXACTLY Feb 9, 2026.
-- When user says "next week", use Feb 15, 2026 or later.
-- When you need a default date and user provides none, ALWAYS use Feb 8, 2026.
-
-**FORBIDDEN DATES**:
-NEVER use 2024, 2025, or any past date.
-All dates must be in 2026.
-If user doesn't specify a year, always assume 2026."""
+**DATE/TIME (dynamic)**:
+Today is {today_str} (ISO: {today_iso}).
+- "tomorrow" / "next day" = {tomorrow_iso}
+- "next week" = {next_week_iso} or later
+- Always pass due_date to tools in ISO format (YYYY-MM-DD).
+- The current year is {current_year} — never use a past/placeholder date."""
 
     def _format_for_llm(self, messages: List[Message]) -> List[Dict[str, str]]:
         return [

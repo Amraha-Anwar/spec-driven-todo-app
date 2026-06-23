@@ -19,12 +19,16 @@ class RomanUrduHandler:
     2. LLM fallback for ambiguous/complex input
     """
 
-    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://openrouter.ai/api/v1"):
-        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+        # base_url defaults to OpenAI's official endpoint when not provided
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.base_url = base_url
 
         if self.api_key:
-            self.client = OpenAI(api_key=self.api_key, base_url=base_url)
+            client_kwargs = {"api_key": self.api_key}
+            if base_url:
+                client_kwargs["base_url"] = base_url
+            self.client = OpenAI(**client_kwargs)
         else:
             self.client = None
 
@@ -135,7 +139,7 @@ Examples:
 - "Mera tasks dikhao" → {{"operation": "list_tasks", "params": {{}}}}"""
 
             response = self.client.chat.completions.create(
-                model="openai/gpt-4o-mini",  # Cheaper model for parsing
+                model=os.getenv("OPENAI_PARSER_MODEL", "gpt-4o-mini"),  # Cheaper model for parsing
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0,
                 max_tokens=200

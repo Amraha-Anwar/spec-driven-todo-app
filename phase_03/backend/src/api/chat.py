@@ -1,5 +1,5 @@
 """
-Chat API: Natural language task management via OpenRouter agents
+Chat API: Natural language task management via OpenAI agents
 Endpoint: POST /api/{user_id}/chat
 Handles stateless chat with user isolation, tool orchestration, and message persistence
 """
@@ -91,7 +91,7 @@ async def chat_endpoint(
     - 401: Unauthorized (invalid or missing JWT)
     - 403: Forbidden (user_id mismatch)
     - 400: Bad request (invalid message or schema)
-    - 503: Service unavailable (OpenRouter API down)
+    - 503: Service unavailable (OpenAI API down)
 
     **Example:**
     ```
@@ -184,8 +184,8 @@ async def chat_endpoint(
         # Log error details (in production, use structured logging)
         print(f"Chat error: {str(e)}")
 
-        # Return 503 if OpenRouter is unavailable
-        if "openrouter" in str(e).lower() or "api" in str(e).lower():
+        # Return 503 if the OpenAI API is unavailable
+        if "openai" in str(e).lower() or "api" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="AI service temporarily unavailable. Please try again later."
@@ -235,7 +235,10 @@ async def get_chat_messages(
         conversation = session.exec(conv_stmt).first()
 
         if not conversation:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+            # Stale conversation_id (e.g. the client cached an id that was later
+            # removed, such as after a DB reset). Return an empty history instead
+            # of erroring so the client can transparently start a new conversation.
+            return {"messages": []}
 
         # Fetch all messages for this conversation
         msg_stmt = select(Message).where(
@@ -258,6 +261,9 @@ async def get_chat_messages(
 
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid conversation_id format")
+    except HTTPException:
+        # Preserve intentional HTTP errors (don't mask them as 500)
+        raise
     except Exception as e:
         print(f"Error fetching messages: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch messages")

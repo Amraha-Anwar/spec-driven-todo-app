@@ -1,5 +1,5 @@
 """
-Agent Runner: Orchestrates OpenAI Agents SDK configured for OpenRouter
+Agent Runner: Orchestrates OpenAI Agents SDK using the official OpenAI API
 Handles LLM calls with tool binding and MCP integration
 """
 import os
@@ -10,25 +10,27 @@ from openai import OpenAI
 
 
 class AgentRunner:
-    """Orchestrates OpenAI SDK configured to use OpenRouter as base_url"""
+    """Orchestrates the OpenAI SDK against the official OpenAI API"""
 
-    # OpenRouter model configuration - 3-tier fallback strategy (all verified available models)
-    PRIMARY_MODEL = "openrouter/auto"  # Will be overridden by OPENROUTER_MODEL from .env
-    FALLBACK_MODEL = "arcee-ai/trinity-mini:free"  # First fallback - 26B sparse MoE with agentic support
-    FINAL_FALLBACK_MODEL = "nvidia/nemotron-3-nano-30b-a3b:free"  # Final fallback - explicitly for agentic AI
+    # OpenAI model configuration - 3-tier fallback strategy (all verified available models)
+    PRIMARY_MODEL = "gpt-4o"  # Will be overridden by OPENAI_MODEL from .env
+    FALLBACK_MODEL = "gpt-4o-mini"  # First fallback - cheaper, strong tool-calling
+    FINAL_FALLBACK_MODEL = "gpt-4-turbo"  # Final fallback - robust reasoning
 
-    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://openrouter.ai/api/v1"):
-        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+        # base_url defaults to OpenAI's official endpoint when not provided
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.base_url = base_url
         self.model_routing_log = []  # Track model routing for debugging
 
         if not self.api_key:
-            raise ValueError("OPENROUTER_API_KEY not provided and not found in environment")
+            raise ValueError("OPENAI_API_KEY not provided and not found in environment")
 
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=base_url
-        )
+        # When base_url is None the OpenAI client targets https://api.openai.com/v1
+        client_kwargs = {"api_key": self.api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        self.client = OpenAI(**client_kwargs)
 
     async def run_agent(
         self,
@@ -36,17 +38,17 @@ class AgentRunner:
         messages: List[Dict[str, str]],
         user_id: str,
         tools: List[Dict[str, Any]] = None,
-        # OpenRouter Auto-Free Router with stable Mistral fallback
-        model: str = os.getenv("OPENROUTER_MODEL", "openrouter/auto"),
+        # OpenAI model (configurable via OPENAI_MODEL; defaults to gpt-4o)
+        model: str = os.getenv("OPENAI_MODEL", "gpt-4o"),
         temperature: float = 0.7,
-        # Reduced from 2000 to 500 to fix the 402 "Insufficient Credits" error
-        max_tokens: int = 500,
+        # Headroom for fuller synthesis confirmations on a paid OpenAI key
+        max_tokens: int = 1000,
         tool_results: Optional[List[Dict[str, Any]]] = None,
         language_hint: str = "en",
         actual_tasks: Optional[List[Dict[str, Any]]] = None,  # **MANDATORY FIX #1**: Actual tasks from DB
         force_tool_name: Optional[str] = None  # **NEW**: Force specific tool execution during retry
     ) -> Dict[str, Any]:
-        """Execute agent call to OpenRouter with tool binding support and response synthesis.
+        """Execute agent call to OpenAI with tool binding support and response synthesis.
 
         **T025 FIX**: Bind TaskToolbox MCP tools and set tool_choice='auto' to force LLM to use tools.
         **RESPONSE SYNTHESIS**: Two-turn flow - first turn executes tools, second turn synthesizes confirmation.
@@ -85,7 +87,7 @@ class AgentRunner:
         model_to_use = model
         attempted_models = []
 
-        # Attempt 1: Try the .env configured model (openrouter/auto or user's choice)
+        # Attempt 1: Try the .env configured model (gpt-4o or user's choice)
         print(f"DEBUG: Attempting primary model: {model_to_use}")
         attempted_models.append(model_to_use)
 
@@ -96,11 +98,6 @@ class AgentRunner:
                 "messages": full_messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
-                # Header required by OpenRouter for ranking/visibility
-                "extra_headers": {
-                    "HTTP-Referer": "http://localhost:3000",
-                    "X-Title": "Plannoir AI Assistant",
-                }
             }
 
             # **T025 FIX**: Pass tools and set tool_choice='auto' to force LLM to use tools
@@ -124,7 +121,7 @@ class AgentRunner:
                 pass
 
             # **T050 FIX**: Log RAW JSON payload to verify tools array is present
-            # Log before API call to verify OpenRouter will receive tools with tool_choice='auto'
+            # Log before API call to verify OpenAI will receive tools with tool_choice='auto'
             payload_for_logging = {
                 "model": api_params.get("model"),
                 "tools_count": len(api_params.get("tools", [])),
@@ -196,7 +193,7 @@ class AgentRunner:
             if "404" in error_msg or "not found" in error_msg.lower():
                 print(f"DEBUG: Detected 404 error. Retrying with fallback model: {self.FALLBACK_MODEL}")
 
-                # Attempt 2: Use the stable fallback (mistralai/mistral-7b-instruct:free)
+                # Attempt 2: Use the stable fallback (gpt-4o-mini)
                 model_to_use = self.FALLBACK_MODEL
                 attempted_models.append(model_to_use)
 
@@ -264,12 +261,12 @@ class AgentRunner:
                         self.model_routing_log.append({"model": final_fallback_model, "status": "failed", "error": str(final_error)[:100]})
                         error_msg = f"All model attempts failed. Tried: {attempted_models}. Error: {str(final_error)[:200]}"
 
-            # Check for the 402 credit error specifically
-            elif "402" in error_msg:
-                error_msg = "Insufficient OpenRouter credits. Please lower max_tokens or top up your account."
+            # Check for the 429 quota / rate-limit error specifically
+            elif "429" in error_msg or "insufficient_quota" in error_msg.lower():
+                error_msg = "OpenAI quota or rate limit reached. Please check your usage/billing or retry shortly."
 
             return {
-                "content": f"Error calling OpenRouter: {error_msg}",
+                "content": f"Error calling OpenAI: {error_msg}",
                 "tool_calls": [],
                 "error": error_msg
             }
@@ -413,10 +410,6 @@ DO NOT say "Done", "All set", or "Got it" unless "success": true in tool results
                 messages=synthesis_messages,
                 temperature=0.7,
                 max_tokens=max_tokens,
-                extra_headers={
-                    "HTTP-Referer": "http://localhost:3000",
-                    "X-Title": "Plannoir AI Assistant",
-                }
             )
 
             confirmation_content = response.choices[0].message.content or ""
@@ -459,7 +452,24 @@ DO NOT say "Done", "All set", or "Got it" unless "success": true in tool results
 
                 # Extract detailed data from tool result
                 data = result.get('data', {})
-                if isinstance(data, dict):
+
+                # list_tasks returns a LIST of tasks — render the full list so the
+                # model can read them back to the user (not just a single title).
+                if isinstance(data, list):
+                    if data:
+                        titles = []
+                        for t in data:
+                            if isinstance(t, dict):
+                                title = t.get('title', 'Untitled')
+                                tstatus = t.get('status', '')
+                                tprio = t.get('priority', '')
+                                meta = ', '.join([p for p in [tstatus, tprio] if p])
+                                titles.append(f"  • {title}" + (f" ({meta})" if meta else ""))
+                        joined = "\n".join(titles)
+                        formatted.append(f"{status} {action}: {len(data)} task(s):\n{joined}")
+                    else:
+                        formatted.append(f"{status} {action}: The task list is empty (0 tasks).")
+                elif isinstance(data, dict):
                     # For task operations, extract key fields
                     task_name = data.get('title', '')
                     task_id = data.get('task_id', '')
