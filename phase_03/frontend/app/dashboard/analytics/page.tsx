@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../../../lib/api";
-import { authClient } from "../../../lib/auth-client";
+import { useAuth } from "../../hooks/use-auth";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -104,14 +104,29 @@ function CustomLegend({ items }: { items: { color: string; label: string }[] }) 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  // Reactive session: re-renders when Better Auth resolves the session.
+  // (The old code read getSession() once on mount and bailed if it wasn't
+  // ready yet — a race that left the page permanently blank in production.)
+  const { data: session, isPending } = useAuth();
+  const userId = session?.user?.id;
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const { data: sessionData } = await authClient.getSession();
-        const userId = sessionData?.user?.id;
-        if (!userId) return;
+    // Wait until the session has finished resolving before deciding anything.
+    if (isPending) return;
 
+    // Session resolved but no user → stop loading and show the empty state
+    // instead of spinning / rendering nothing forever.
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchAnalytics = async () => {
+      setIsLoading(true);
+      setLoadError(false);
+      try {
         const response = await api.get(`/api/${userId}/tasks`);
         const tasks = response.data;
 
@@ -145,12 +160,13 @@ export default function AnalyticsPage() {
         setAnalytics({ totalTasks: total, completedTasks: completed, pendingTasks: pending, completionRate: rate, priorityDistribution: priorityData, weeklyProgress: weeklyData });
       } catch (error) {
         console.error("Failed to fetch analytics:", error);
+        setLoadError(true);
       } finally {
         setIsLoading(false);
       }
     };
     fetchAnalytics();
-  }, []);
+  }, [userId, isPending]);
 
   /* loading */
   if (isLoading) return (
@@ -167,7 +183,29 @@ export default function AnalyticsPage() {
     </div>
   );
 
-  if (!analytics) return null;
+  /* error / no-data — never render a blank page silently */
+  if (!analytics) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 320 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center", padding: "0 24px", fontFamily: "'Poppins',sans-serif" }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <BarChart2 size={22} color="#f43f5e" />
+        </div>
+        <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", maxWidth: 280, lineHeight: 1.5 }}>
+          {loadError
+            ? "We couldn't load your analytics right now. Please refresh the page or try again shortly."
+            : "Sign in to view your productivity analytics."}
+        </span>
+        {loadError && (
+          <button
+            onClick={() => window.location.reload()}
+            style={{ marginTop: 4, padding: "8px 18px", borderRadius: 10, background: "#e11d48", color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}
+          >
+            Retry
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   const PRIORITY_COLORS = ["#f43f5e", "#fb923c", "#60a5fa"];
   const AXIS_STYLE = { stroke: "rgba(255,255,255,0.18)", fontSize: 11, fontFamily: "'DM Mono',monospace" };

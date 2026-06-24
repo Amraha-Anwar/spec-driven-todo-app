@@ -404,19 +404,48 @@ DO NOT say "Done", "All set", or "Got it" unless "success": true in tool results
                 }
             ]
 
-            # Call LLM for synthesis
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=synthesis_messages,
-                temperature=0.7,
-                max_tokens=max_tokens,
-            )
+            # **SYNTHESIS MODEL FALLBACK**: The first turn (run_agent) already
+            # retries across gpt-4o → gpt-4o-mini → gpt-4-turbo on a 404/model
+            # error. The synthesis turn used to call a single model with no
+            # fallback, so when OPENAI_MODEL pointed at a model the key cannot
+            # access, the tool ran (and persisted!) but this call threw — leaving
+            # the user with the generic "Done! I've completed your task action"
+            # instead of a real confirmation / their task list. Mirror the same
+            # 3-tier fallback here so a bad OPENAI_MODEL never swallows the result.
+            synthesis_models = []
+            for m in (model, self.FALLBACK_MODEL, self.FINAL_FALLBACK_MODEL):
+                if m and m not in synthesis_models:
+                    synthesis_models.append(m)
+
+            response = None
+            last_error: Optional[Exception] = None
+            for candidate in synthesis_models:
+                try:
+                    response = self.client.chat.completions.create(
+                        model=candidate,
+                        messages=synthesis_messages,
+                        temperature=0.7,
+                        max_tokens=max_tokens,
+                    )
+                    if candidate != model:
+                        print(f"DEBUG: Synthesis succeeded on fallback model '{candidate}'")
+                    break
+                except Exception as model_error:
+                    last_error = model_error
+                    print(f"DEBUG: Synthesis model '{candidate}' failed: {str(model_error)[:120]}")
+                    continue
+
+            # All synthesis models failed (e.g. quota/auth). Don't lie with a
+            # generic line — build a confirmation from the REAL tool results so
+            # the user still sees what happened (their task / their list).
+            if response is None:
+                raise last_error or RuntimeError("All synthesis models failed")
 
             confirmation_content = response.choices[0].message.content or ""
 
             # Fallback if synthesis returns empty
             if not confirmation_content or confirmation_content.strip() == "":
-                confirmation_content = self._get_fallback_confirmation(language_hint)
+                confirmation_content = self._fallback_from_tool_results(tool_results, language_hint)
 
             return {
                 "content": confirmation_content,
@@ -428,9 +457,12 @@ DO NOT say "Done", "All set", or "Got it" unless "success": true in tool results
             }
 
         except Exception as e:
-            # Always return a meaningful confirmation, even if synthesis fails
+            # Synthesis is fully unavailable (e.g. invalid OPENAI_MODEL/key/quota).
+            # Surface the ACTUAL tool result instead of a generic confirmation so
+            # the action that already executed is reported truthfully.
             error_msg = str(e)
-            fallback_confirmation = self._get_fallback_confirmation(language_hint)
+            print(f"DEBUG: Synthesis failed entirely, using data-grounded fallback: {error_msg[:120]}")
+            fallback_confirmation = self._fallback_from_tool_results(tool_results, language_hint)
 
             return {
                 "content": fallback_confirmation,
@@ -505,3 +537,77 @@ DO NOT say "Done", "All set", or "Got it" unless "success": true in tool results
             return "Bilkul! Mainay aapka task action complete kar diya! 🎉 Kya aor kuch karna hai?"
         else:
             return "Done! I've completed your task action! 🎉 Would you like to do anything else?"
+
+    def _fallback_from_tool_results(
+        self,
+        tool_results: Optional[List[Dict[str, Any]]],
+        language_hint: str
+    ) -> str:
+        """
+        Build a truthful confirmation from the executed tool results when the
+        OpenAI synthesis turn is unavailable (bad OPENAI_MODEL, quota, auth).
+
+        Unlike the generic _get_fallback_confirmation(), this reads the real
+        action + data so the user sees their actual list / created task instead
+        of a misleading "Done!" — the exact failure that made the chat reply
+        "your list is empty" / "Done!" in production.
+        """
+        if not tool_results:
+            return self._get_fallback_confirmation(language_hint)
+
+        ur = language_hint == "ur"
+        lines: List[str] = []
+
+        for result in tool_results:
+            if not isinstance(result, dict):
+                continue
+            action = (result.get("action") or "").lower()
+            success = bool(result.get("success"))
+            data = result.get("data")
+            message = result.get("message") or ""
+
+            # Honest error reporting (mirrors the synthesis HARD VERIFICATION rule)
+            if not success:
+                reason = message or ("Maaloom error" if ur else "an unknown error")
+                lines.append(
+                    f"Maaf kijiye, action complete nahi ho saka: {reason}"
+                    if ur else
+                    f"Sorry, I couldn't complete that action: {reason}"
+                )
+                continue
+
+            # list_tasks → render the real list
+            if action == "list_tasks" or isinstance(data, list):
+                tasks = data if isinstance(data, list) else []
+                if not tasks:
+                    lines.append(
+                        "Aapki list abhi khaali hai. Pehla task add karein? 📝"
+                        if ur else
+                        "Your task list is empty right now. Want to add your first one? 📝"
+                    )
+                else:
+                    bullets = "\n".join(
+                        f"• {t.get('title', 'Untitled')}" for t in tasks if isinstance(t, dict)
+                    )
+                    header = "Aapke tasks:" if ur else "Here are your tasks:"
+                    lines.append(f"{header}\n{bullets}")
+                continue
+
+            # Single-task ops → name the task
+            title = data.get("title") if isinstance(data, dict) else None
+            title_str = f'"{title}"' if title else ("aapka task" if ur else "your task")
+            if action == "add_task":
+                lines.append(f"{title_str} add kar diya! ✅" if ur else f"Added {title_str}! ✅")
+            elif action == "delete_task":
+                lines.append(f"{title_str} delete kar diya! 🗑️" if ur else f"Deleted {title_str}! 🗑️")
+            elif action == "complete_task":
+                lines.append(f"{title_str} complete mark kar diya! ✅" if ur else f"Marked {title_str} as complete! ✅")
+            elif action == "update_task":
+                lines.append(f"{title_str} update kar diya! 📝" if ur else f"Updated {title_str}! 📝")
+            else:
+                lines.append(message or ("Ho gaya! ✅" if ur else "Done! ✅"))
+
+        if not lines:
+            return self._get_fallback_confirmation(language_hint)
+
+        return "\n".join(lines)
